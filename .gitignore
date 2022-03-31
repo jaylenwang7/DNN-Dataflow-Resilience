@@ -127,3 +127,17 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Output directories
+tests/
+data_results/
+zero_data/
+data_results/
+
+# Scrap files
+scrap*.py
+scratch.py
+test_stuff.py
+debug*.txt
+random*.py
+
