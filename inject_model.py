@@ -141,8 +141,8 @@ class InjectConvLayer(nn.Module):
             # print("MAX VAL: " + str(max_val))
             # print("MIN VAL: " + str(min_val))
             # assert(False)
-            clamped_output = torch.clamp(output, min=min_val, max=max_val)
-            output.copy_(clamped_output)
+            
+            output.copy_(torch.clamp(output, min=min_val, max=max_val))
         self.conv_ind += 1
         
         # 5 ===========
