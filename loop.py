@@ -438,27 +438,6 @@ class Loop():
             self.window = (range(self.out_size[0]), y_range, x_range)
             # print("WINDOW: " + str(self.window))
             return
-
-            # BELOW IS OLD WAY - DOESN'T CONSIDER STRIDE
-            # # get the start of the window (h - s + 1)
-            # start_y = index[1] - self.weight_size[1] + 1
-            # start_x = index[2] - self.weight_size[2] + 1
-            
-            # # if out of bounds (at the edges) - just set to 0
-            # if start_y < 0:
-            #     start_y = 0
-            # if start_x < 0:
-            #     start_x = 0
-            
-            # # get the end of the window - this is exclusive (h + 1)
-            # end_y = index[1] + 1
-            # end_x = index[2] + 1
-            
-            # # round to the output size (at the edges)
-            # if end_y > self.out_size[1]:
-            #     end_y = self.out_size[1]
-            # if end_x > self.out_size[2]:
-            #     end_x = self.out_size[2]
             
             # # set the ranges for each of the loop_vars
             # self.window = (range(self.out_size[0]), range(start_y, end_y), range(start_x, end_x))
@@ -651,8 +630,6 @@ class Loop():
     #   * If you're at or above the injection level and you bring in the injected value (wasn't already
     #     in the working set)
     def add_if_set(self):
-        # if at or above injection level of the memory injection level
-        # if self.curr_var_ind <= self.inj_level:
 
         # if below the memory injection level then don't need to do anything
         if self.is_below_memory_level():
@@ -662,8 +639,6 @@ class Loop():
         self.update_set()
         # check whether the update results in the index being in or out of bounds
         is_in_bound = self.check_in_set()
-        # check whether the loop is spatial
-        # is_spatial = self.curr_var.is_spatial()
         
         # if you've gone out of bounds - add a new set
         # if not is_in_bound and not is_spatial:
@@ -802,9 +777,6 @@ class Loop():
     def compare_inj(self):
         # get coord based on datatype
         if self.d_type == 'i':
-            # print(self.get_input_coord())
-            # print("injx: " + str((self.inj_ind[1], self.inj_ind[2])))
-            # print("input coord: " + str(self.get_input_coord()))
             return self.get_input_coord() == (self.inj_ind[1], self.inj_ind[2])
         elif self.d_type == 'w':
             return self.get_weight_coord() == self.inj_ind
@@ -822,9 +794,6 @@ class Loop():
                 # can get rid of the c
                 # get m and set rest to 0
                 new_ind = [new_ind[0], 0, 0]
-                # set everything to 0 - everything is symmetric for weights
-                # new_ind[1] = 0
-                # new_ind[2] = 0
                 if self.has_spatial['m']:
                     # save the m value - since this shows up in output
                     self.spatial_m_val = inj_ind[0]
@@ -934,14 +903,12 @@ class Loop():
     # this compiles them for a single mem_ind - marked by mem_ind (mem_ind 
     # will index into all_dividers to get a set of dividers)
     def get_timed_sites(self, mem_ind):
-        # print("mem_ind: " + str(mem_ind))
         # if not all dividers/sites generated yet - generate them
         if not self.all_out_sites or not self.all_dividers:
             assert(False)
         
         # get the dividers for the inquired div
         divs = self.all_dividers[mem_ind]
-        # print("divs: " + str(divs))
         # get the divided sets for this mem_ind
         div_sets = self.all_out_sites[mem_ind]
         
@@ -1093,8 +1060,6 @@ class Loop():
 
             # update the coord of the current loop_var, check if OOB
             if self.update_coord():
-                # if self.is_curr_spatial():
-
                 break
         
         # go to one loop outer 
@@ -1145,10 +1110,6 @@ class Loop():
                     #       sp_steps    = 16
                     #       sp_const    = 8
                     sp_size, sp_inc, sp_steps, sp_const = self.spatial_info[j]
-                    # print("SP_SIZE: " + str(sp_size))
-                    # print("SP_INC: " + str(sp_inc))
-                    # print("SP_STEPS: " + str(sp_steps))
-                    # print("SP_CONST: " + str(sp_const))
 
                     # loop through each timed group
                     for k in range(len(timed_site)):
@@ -1180,23 +1141,9 @@ class Loop():
 
                                     # get the offset to index into
                                     off = n*sp_inc*sp_const
-                                    # print('')
-                                    # print("n = " + str(n))
-                                    # print("sp_inc = " + str(sp_inc))
-                                    # print("sp_const = " + str(sp_const))
-                                    # print("off = " + str(off))
 
                                     new_val = 0
-                                    # off = n
                                     new_val = off + o*sp_inc + n_
-
-                                    # print("NEW_VAL = " + str(new_val))
-
-                                    # print('')
-                                    # print("off = " + str(off))
-                                    # print("o = " + str(o))
-                                    # print("n_ = " + str(n_))
-                                    # print(new_val)
 
                                     if new_val < 0:
                                         continue
@@ -1261,13 +1208,6 @@ class Loop():
 
                     # get info for this spatial
                     sp_size, sp_inc, sp_steps, sp_const = self.spatial_info[j]
-                    # print("sp_inc: " + str(sp_inc))
-                    # print("sp_const: " + str(sp_const))
-                    # print("sp_steps: " + str(sp_steps))
-
-                    # sp_num = sp_inc*sp_const
-                    # sp_num = int(sp_size/sp_inc)
-                    # print(sp_inc)
 
                     # loop through each timed group
                     for k in range(len(timed_site)):
@@ -1367,7 +1307,6 @@ class Loop():
 
                                     # iterate through number of locs in site
                                     for m in range(num_single):
-                                        # debug_log("NEW LOC: " + str(single_site[m]))
                                         # get one location (m, q, p)
                                         loc = single_site[m]
 
@@ -1383,8 +1322,6 @@ class Loop():
                                             new_loc = (loc[0], new_val, loc[2])
                                         else:
                                             new_loc = (loc[0], loc[1], new_val)
-
-                                        # print("NEW_LOC: " + str(new_loc))
 
                                         # compare the spatial to the mem level
                                         # if the spatial is outside the mem_level
@@ -1481,12 +1418,6 @@ def get_window(inj_ind, var_sizes, strides=[1,1], padding=[0,0], d_type='i'):
     m, c, s, r, q, p, h, w = var_sizes
     h += padding[0]
     w += padding[1]
-    
-    # if d_type == 'i':
-    #     inj_ind = list(inj_ind)
-    #     inj_ind[1] += padding[0]
-    #     inj_ind[2] += padding[1]
-    #     inj_ind = tuple(inj_ind)
     
     if d_type == 'i':
         return (range(m), get_window_i(s, strides[0], inj_ind[1], h), get_window_i(r, strides[1], inj_ind[2], w))
