@@ -1,7 +1,7 @@
-from loop_var import loop_var
+from loop_var import LoopVar
 
 # represents whole loop nest for a certain architecture/mapping
-class loop():
+class Loop():
     # definitions for things that don't change from different class instances
     types = ['q', 'p', 's', 'r', 'c', 'm']
     input_types = ['q', 'p', 's', 'r']
@@ -14,6 +14,7 @@ class loop():
     # constructor
     def __init__(self, input_vars_in, mem_dividers, d_type='i', input_strides=[1, 1], sizes=[], paddings=[0,0], out_file='', serial=False):
         assert(d_type in self.d_types)
+        self.input_vars_in = input_vars_in
         self.spatial_m_val = 0
         self.out_file = out_file
         loop_consts = {k: [] for k in self.types}
@@ -110,6 +111,9 @@ class loop():
         # print("loop_orders: " + str(loop_orders))
         # print("mem_inds: " + str(self.mem_inds))
         # print("strides: " + str(self.strides))
+        self.loop_consts = loop_consts
+        self.spatials = spatials
+        self.loop_orders = loop_orders
         
         if self.out_file:
             with open(self.out_file, 'a') as f:
@@ -131,7 +135,7 @@ class loop():
             elif ltype == 'q':
                 stride = self.strides[0]
 
-            loop_classes[ltype] = loop_var(loop_consts[ltype], loop_orders[ltype], ltype, spatials[ltype], stride=stride)
+            loop_classes[ltype] = LoopVar(loop_consts[ltype], loop_orders[ltype], ltype, spatials[ltype], stride=stride)
         loop_vars = {}
         for i in range(len(input_vars)):
             loop_vars[i] = loop_classes[input_vars[i][0]]
@@ -207,7 +211,19 @@ class loop():
         # says which mac currently targeting
         self.mac_ind = 0
         self.spatial_ind = -1
-
+        
+    def __str__(self):
+        out_str = ""
+        out_str += "input_vars: " + str(self.input_vars_in) + "\n"
+        out_str += "spatial_inds: " + str(self.spatial_inds) + "\n"
+        out_str += "spatial_info: " + str(self.spatial_info) + "\n"
+        out_str += "loop_consts: " + str(self.loop_consts) + "\n"
+        out_str += "spatials: " + str(self.spatials) + "\n"
+        out_str += "loop_orders: " + str(self.loop_orders) + "\n"
+        out_str += "mem_inds: " + str(self.mem_inds) + "\n"
+        out_str += "strides: " + str(self.strides) + "\n"
+        out_str += "d_type: " + self.d_type + "\n"
+        return out_str
     
     # reset this loop - called between injections
     def reset(self):
@@ -1456,6 +1472,7 @@ def get_window_i(W, S, I, L):
 
         assert(i < 1000)
     out_range = range(ranges[0], ranges[1])
+    print("OUT RANGE: " + str(out_range))
     return out_range
 
 # var_sizes will have the form [m, c, s, r, q, p, h, w]
@@ -1481,3 +1498,18 @@ def get_window(inj_ind, var_sizes, strides=[1,1], padding=[0,0], d_type='i'):
         return (range(inj_m, inj_m+1), range(inj_q, inj_q+1), range(inj_p, inj_p+1),)
     else:
         assert(False)
+        
+# var_sizes will have the form [m, c, s, r, q, p, h, w]
+def check_sites(sites, inj_ind, var_sizes, strides, padding=[0,0], d_type='i'):
+    assert(len(var_sizes) == 8)
+    
+    ranges = get_window(inj_ind, var_sizes, strides, padding=padding, d_type=d_type)
+        
+    # print("OG RANGES = " + str(ranges))
+        
+    for site in sites:
+        is_in = site[0] in ranges[0] and site[1] in ranges[1] and site[2] in ranges[2] 
+        if not is_in:
+            print(site)
+            print(ranges)
+            assert(False)

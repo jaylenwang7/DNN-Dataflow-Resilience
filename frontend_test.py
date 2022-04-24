@@ -111,6 +111,31 @@ def test_inject():
         print("TEST PASSED - same number of sites and output diffs")
     else:
         print("TEST FAILED")
+        
+        
+def test_inject():
+    sites = []
+
+    inj_coord = (2, 48, 37)
+
+    dataset = get_dataset()
+    resnet18 = get_resnet18()
+    clean_resnet18 = get_resnet18()
+    img = dataset[0]['image']
+    img = torch.unsqueeze(img, 0)
+    conv_id = 1
+    inject_net = InjectConvLayer(resnet18, conv_id)
+
+    clean_net = CleanModel(clean_resnet18)
+    clean_output, zeros = run_clean(clean_net, img, conv_id)
+
+    inject_net.run_hook(img, inj_coord, sites)
+    
+    inject_output = inject_net.get_output(conv_id)
+
+    num_diff, ranges = compare_outputs_range(clean_output, inject_output)
+    print("Number of output neurons different: " + str(num_diff))
+    print("Ranges: " + str(ranges))
 
 # run_thousand()
 # run_thousand_injected()

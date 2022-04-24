@@ -34,8 +34,11 @@ def parse_line(line):
         var_char = line[var_ind].lower()
         
         # get the size of var
-        size_ind = line.find(":") + 1
-        size = int(line[size_ind])
+        size_ind = line.find(":")
+        num_digs = 1
+        while line[size_ind + num_digs].isdigit():
+            num_digs += 1
+        size = int(line[size_ind + 1:size_ind + num_digs])
         line_type = 0
     # under memory divider - don't need to do anything
     elif first_char == '-':
@@ -111,9 +114,17 @@ def parse_map(file_name):
         
     return loops, divs, name_dict
 
-def parse_files(dir, to_parse = '**/*.map.txt'):
+def parse_files(dir, to_parse='**/*.map.txt'):
+    def get_key(filename):
+        filename = str(filename)
+        num = ""
+        for s in filename:
+            if s.isdigit():
+                num += s
+        return int(num)
+        
     # get list of all txt files in dir
-    pathlist = Path(dir).glob(to_parse)
+    pathlist = sorted(Path(dir).glob(to_parse), key=get_key)
     
     all_loops = []
     all_divs = []

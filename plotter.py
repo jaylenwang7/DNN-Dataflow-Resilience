@@ -78,7 +78,7 @@ class plotter():
 
     # plot the aggregated results of all the layers on the same plot
     # compared to the baseline
-    def plot(self, correct_rate, xlabels=[], show_chart=False, show=True, img_name='', agg_layers=False):
+    def plot(self, correct_rate=-1, xlabels=[], show_chart=False, show=True, img_name='', agg_layers=False):
         
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
         labels = []

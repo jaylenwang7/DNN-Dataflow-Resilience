@@ -118,33 +118,49 @@ def get_conv_info(get_net: callable, img):
         
     return num_layers, var_sizes, paddings, strides
 
-def print_layer_sizes(net, net_name='', do_print=True, with_FC=True):
+def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=False):
+    # instantiate a table
     table = PrettyTable()
     if net_name:
         table.title = "CONV Layer Information for " + net_name
     table.field_names = ["layer #", "type", "weight", "output", "input", "padding", "stride", "layer id"]
+    
+    # get dataset to use; TODO: take in a function instead
     dataset = get_dataset()
+    
+    # get verbose model info and lyaer info
     vnet = InfoModel(net, process_FC=with_FC)
     vnet(dataset[0]['image'])
     layer_info, _ = vnet.get_info()
+    
+    # loop through layers and collect data while printing
     layer_num = 1
     layer_dict = {}
-    layer_id = curr_id = 1
+    curr_id = 1
+    layer_id = 0
+    layer_ids = []
     for linfo in layer_info:
+        # get the shape of the layer
         vinfo = tuple(linfo.get_shapes())
+        # if not seen shape before (new layer shape)
         if vinfo not in layer_dict:
-            layer_dict[vinfo] = layer_id
-            curr_id = layer_id
+            layer_dict[vinfo] = layer_num
+            curr_id = layer_num
             layer_id += 1
+        # else seen before
         else:
+            # get the ID of the layer
             curr_id = layer_dict[vinfo]
         row = []
         row.append(str(layer_num))
         
         if isinstance(linfo, ConvInfo):
             row.append("CONV")
+            layer_ids.append(layer_id)
         elif isinstance(linfo, FCInfo):
             row.append("FC")
+            if return_FC:
+                layer_ids.append(layer_id)
         else:
             assert(False)
             
@@ -161,4 +177,4 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True):
     if do_print:
         print(table)
     
-    return layer_id
+    return layer_ids

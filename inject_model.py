@@ -3,12 +3,12 @@ import torch
 from torch import nn, Tensor
 import copy
 import bitflip
+from helpers import *
 
 # object to inject into a single conv layer
 class InjectConvLayer(nn.Module):
     def __init__(self, model: nn.Module, conv_id, inj_loc='i'):
         super().__init__()
-        print("Constructing InjectConvLayer...")
         
         # initialize all params
         self.conv_id = conv_id
@@ -22,7 +22,8 @@ class InjectConvLayer(nn.Module):
         self.change_to = 1000.
         self.pre_value = []
         self.post_value = []
-        self.max_val = -1
+        self.max_vals = []
+        self.min_vals = []
         self.range_max = False
         self.conv_ind = 0
         self.compare_1 = 0
@@ -47,17 +48,27 @@ class InjectConvLayer(nn.Module):
     
     # set the maximum value for ranging
     # if max_vals == -1, this disables ranging
-    def set_max(self, max_val):
-        print("Setting max...")
+    def set_range(self, max_vals=[], min_vals=[]):
         # this turns off max ranging
-        if max_val == -1:
-            self.max_val = -1
+        if not max_vals and not min_vals:
+            self.max_vals = []
+            self.min_vals = []
             self.range_max = False
             return
         
         # set it - and indicate using ranger
-        self.max_val = max_val
-        self.range_max = True
+        if not self.min_vals:
+            self.max_vals = max_vals
+            self.min_vals = [None]*self.num_conv
+        elif not self.max_vals:
+            self.min_vals = min_vals
+            self.max_vals = [None]*self.num_conv
+        else:
+            self.min_vals = min_vals
+            self.max_vals = max_vals
+            self.range_max = True
+        assert(len(self.min_vals) == self.num_conv)
+        assert(len(self.max_vals) == self.num_conv)
     
     # a hook function that will perform HW injection (given some SW error model)
     def inject(self, module, input_value, output):
@@ -103,34 +114,47 @@ class InjectConvLayer(nn.Module):
         # 2 ===========
         faulty_output = self.conv(input_tensor)
         
-        # 3 ===========  
-        for site in self.sites:
-            ind = (0, site[0], site[1], site[2])
-            try:
-                output[ind] = faulty_output[ind]
-            except:
-                print(ind)
-                print(self.inj_coord)
-                assert(False)
-#         self.compare_1 = copy.deepcopy(output)
+        # 3 =========== 
+        # if the list of sites is not empty
+        if self.sites:
+            for site in self.sites:
+                ind = (0, site[0], site[1], site[2])
+                try:
+                    output[ind] = faulty_output[ind]
+                except:
+                    print(ind)
+                    print(self.inj_coord)
+                    assert(False)
+        else:
+            # if empty list is given - then just directly copy (don't pick any sites)
+            output.copy_(faulty_output)
         
         # 4 ===========
         if self.range_max:
-            max_val = self.max_val
-            output.copy_(torch.clamp(output, min=-max_val, max=max_val))
+            max_val = self.max_vals[self.conv_id]
+            min_val = self.min_vals[self.conv_id]
+            
+            # uncomment below for clamp checking
+            # clamped_output = torch.clamp(output, min=min_val, max=max_val)
+            # num_diff = compare_outputs(output, clamped_output)
+            # print("NUM_DIFF: " + str(num_diff))
+            # print("MAX VAL: " + str(max_val))
+            # print("MIN VAL: " + str(min_val))
+            # assert(False)
+            clamped_output = torch.clamp(output, min=min_val, max=max_val)
+            output.copy_(clamped_output)
         self.conv_ind += 1
         
         # 5 ===========
-#         self.compare_2 = copy.deepcopy(output)
-#         self.outputs.append(self.compare_2)
         self.outputs.append(copy.deepcopy(output))
     
     # hook function for layers not being injected into
     # this for: 1) doing ranging, 2) for data collection
     def compare(self, module, input_value, output):
         if self.range_max:
-            max_val = self.max_val
-            output.copy_(torch.clamp(output, min=-max_val, max=max_val))
+            max_val = self.max_vals[self.conv_ind]
+            min_val = self.min_vals[self.conv_ind]
+            output.copy_(torch.clamp(output, min=min_val, max=max_val))
         self.conv_ind += 1
         self.outputs.append(copy.deepcopy(output))
     

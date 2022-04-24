@@ -1,5 +1,5 @@
 # class to handle a single loop variable type (so r, s, p, q)
-class loop_var:
+class LoopVar:
     # constructor
     def __init__(self, consts, orders, ltype, spatials, init_coord=0, stride=1):
         # initialize the current index of this var to 0 - this is which var it is handling

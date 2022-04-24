@@ -1,6 +1,6 @@
-from loop import check_sites
-import loop as Loop
+from loop import *
 from datetime import datetime
+from pathlib import Path
 
 '''
 This file is for testing the backend - so just looking at sites that are produced and checking correctness
@@ -37,6 +37,9 @@ def pretty_print(sites, window, timed=False, filename='test.txt', ):
 
 def run_test(vars, dividers, inj_site, filename, spatial=True, d_type='i', stride=[1, 1], 
              range_check=False, sizes=[], serial=False, prune=False):
+    dir = "tests/"
+    p = Path(dir)
+    p.mkdir(parents=True, exist_ok=True)
     filename = "tests/" + filename + "-" + d_type
     if spatial:
         filename = filename + "-spatial"
@@ -50,7 +53,7 @@ def run_test(vars, dividers, inj_site, filename, spatial=True, d_type='i', strid
     if sizes:
         var_sizes = list(sizes[0]) + list(sizes[1][2:]) + list(sizes[2][2:])
 
-    injection = Loop.loop(vars, dividers, d_type=d_type, input_strides=stride, out_file=filename, serial=serial, sizes=var_sizes)
+    injection = Loop(vars, dividers, d_type=d_type, input_strides=stride, out_file=filename, serial=serial, sizes=var_sizes)
     _, sites = injection.inject_full(inj_site)
     og_window = injection.original_window
     if spatial and not serial:
@@ -529,10 +532,19 @@ def test_spatial_m2(spatial=True):
     inj_site = (0, 0, 0)
     strides = [1, 1]
     run_test(vars, dividers, inj_site, 'test_spatial_m2', spatial, 'i', strides)
+    
+def test_eyeriss_resnet18_0(spatial=True):
+    eyeriss_vars = [('q', 8), ('c', 4), ('m', 2), ('p', 56), ('m', 2, True), ('q', 7, True), ('q', 1), ('c', 4, True), ('s', 3, True), ('q', 1), ('r', 3), ('c', 4), ('m', 16)]
+    mem_dividers = [0, 2, 8]
+    inj_site = (2, 49, 38)
+    strides = [1, 1]
+    # ORDER: input, weight, output, stride
+    sizes = [(64, 64, 3, 3), (1, 64, 56, 56), (1, 64, 56, 56), (1, 1), (1, 1)]
+    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_nvdla_alexnet0', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
 
 if __name__=="__main__":
 
-    test_eyeriss_alexnet0()
+    # test_eyeriss_alexnet0()
     # test_eyeriss_alexnet1()
     # test_eyeriss_alexnet2()
     # test_eyeriss_alexnet3()
@@ -541,8 +553,11 @@ if __name__=="__main__":
     # test_eyeriss_alexnet1_weight()
     # test_eyeriss_alexnet2_weight()
     
-    test_nvdla_alexnet0()
+    # test_nvdla_alexnet0()
     # test_nvdla_alexnet1()
     # test_nvdla_alexnet0_weight()
     # test_nvdla_alexnet1_weight()
+    
+    test_eyeriss_resnet18_0()
+    # print(get_window_i(3, 1, 49, 58))
     pass

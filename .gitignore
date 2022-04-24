@@ -140,3 +140,5 @@ test_stuff.py
 debug*.txt
 random*.py
 
+# Pickle files
+*.pickle

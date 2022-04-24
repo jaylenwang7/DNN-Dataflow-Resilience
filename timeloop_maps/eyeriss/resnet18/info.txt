@@ -1,0 +1,1 @@
+last layer (layer21) is an FC layer - all others are convs

@@ -1,0 +1,1 @@
+last three layers (layers 6-8) are FC layers - rest are CONV

@@ -49,9 +49,8 @@ def run_clean(clean_net, test_img, conv_id=-1):
     clean_net.reset()
     with torch.no_grad():
         clean_out = clean_net(test_img)
-    
-    # _, correct_class = torch.max(clean_out, 1)
+
     if conv_id == -1:
-        return clean_net.get_clean_outputs(), clean_net.get_nonzero(conv_id)
+        return clean_net.get_clean_outputs(), clean_net.get_nonzeros()
     else:
-        return clean_net.get_clean_output(conv_id), clean_net.get_nonzeros()
+        return clean_net.get_clean_output(conv_id), clean_net.get_nonzero(conv_id)

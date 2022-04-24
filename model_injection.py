@@ -1,5 +1,4 @@
 from clean_model import CleanModel, run_clean
-from pathlib import Path
 from helpers import *
 import torch
 import random
@@ -12,16 +11,17 @@ from info_model import *
 from max_model import *
 
 # class for an object that is used to inject into a model (for all the conv layers of the model)
-class model_injection():
+class ModelInjection():
     # these are the data fields that are collected
-    fields = ['Img Ind', 'Inj Ind', 'Level', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites']
+    fields = ['Img Ind', 'Inj Ind', 'Level', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'NumDiff']
     d_types = ['i', 'w', 'o']
     
     # constructor
     def __init__(self, get_net: callable, dataset, net_name, arch_name, loops, d_type='i', 
-                 verbose=False, overwrite=False, maxes=[], file_addon='', debug=False):
+                 verbose=False, overwrite=False, maxes=[], mins=[], file_addon='', debug=False, max_range=True):
         self.debug = debug
-        print("Constructing model_injection...")
+        self.max_range = max_range
+        print("Constructing ModelInjection...")
         self.get_net = get_net                  # store function to get network
         self.dataset = dataset                  # dataset to get images from
         self.arch_name = arch_name              # name of the architecture (for file purposes)
@@ -33,11 +33,13 @@ class model_injection():
         self.paddings = []                      # list of padding sizes for each conv layer
         self.strides = []                       # list of stride lengths for each conv layer
         self.maxes = maxes                      # list of maxes for each layer (by default empty if already created)
+        self.mins = mins
         self.inject_convs = []                  # list of InjectConvLayer objects (one per layer)
         self.num_layers = 0                     # number of layers
-        self.filenames = []                     # list of filenames for each layer
+        self.filenames = {}                     # list of filenames for each layer
         self.log_file = ''                      # name of log file
         self.top_dir = ''
+        self.file_addon = file_addon
 
         self.loops = loops                      # list of loop objects for each layer
         self.set_dtype(d_type)                  # data to inject into (weight, input, output?)
@@ -49,18 +51,25 @@ class model_injection():
         self.get_conv_info()
         # get conv layer objects
         self.get_inject_convs()
+        self.set_top_dir()
+        self.set_log_file()
         # set and get filenames
-        self.get_filenames(file_addon)
+        # self.get_filenames(file_addon)
 
-    # open and collect the filenames for each layer
-    def get_filenames(self, file_addon):
-        print("Getting filenames...")
+    def set_top_dir(self):
         top_dir = "data_results/" + self.arch_name + "/" + self.net_name
         self.top_dir = top_dir
+        
+    # open and collect the filenames for each layer
+    def get_filenames(self, file_addon, layers=[]):
+        print("Getting filenames...")
+        if not layers:
+            layers = range(self.num_layers)
+
         # loop through each layer and set filename for that layer (in appropriate dir)
-        for i in range(self.num_layers):
+        for i in layers:
             # create the nested directories
-            dir = top_dir + "/conv" + str(i) + "/"
+            dir = self.top_dir + "/conv" + str(i) + "/"
             p = Path(dir)
             p.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +86,7 @@ class model_injection():
                 filename += ".csv"
             
             # add name to list of filenames
-            self.filenames.append(filename)
+            self.filenames[i] = filename
 
             # if the data file doesn't exist - write the header of data names
             if not exists(filename) or self.overwrite:
@@ -90,11 +99,12 @@ class model_injection():
                     csvwriter = csv.writer(csvfile, delimiter=',') 
                     # write the headers into the csv file
                     fields = self.fields
-                    if self.debug:
-                        fields += ["NumDiff"]
                     csvwriter.writerow(fields)
 
+    def set_log_file(self):
         # open a log file
+        p = Path(self.top_dir)
+        p.mkdir(parents=True, exist_ok=True)
         log_filename = self.top_dir + "/" + "log.txt"
         self.log_file = log_filename
         if not exists(self.log_file) or self.overwrite:
@@ -107,17 +117,22 @@ class model_injection():
     # get InjectConvLayer objects and their maxes (if not given)
     def get_inject_convs(self):
         # if user doesn't pass in - get the maxes
-        if not self.maxes:
+        if not self.maxes and self.max_range:
             # get max values for each layer
             max_net = self.get_net()
-            self.maxes = get_max(max_net, self.dataset)
+            self.maxes, self.mins = get_range(max_net, self.dataset)
 
+        print("Setting up InjectConvs...")
         for i in range(self.num_layers):
             # get the model and get the conv layer injection object
-            net_inj = self.get_net() # TODO: need to change this to handle any model
+            net_inj = self.get_net()
             inject_conv = InjectConvLayer(net_inj, i, inj_loc=self.d_type)
             # set the max for this layer
-            inject_conv.set_max(self.maxes[i])
+            # TODO: need to fix this
+            if self.max_range:
+                inject_conv.set_range(max_vals=self.maxes, min_vals=self.mins)
+            else:
+                inject_conv.set_range()
             # add to list of inject convs
             self.inject_convs.append(inject_conv)
 
@@ -246,6 +261,8 @@ class model_injection():
                mode="change_to", change_to=1000., bit=-1, debug_outputs=False):
         bit_val = bit
         count = 0
+        # set and get filenames
+        self.get_filenames(self.file_addon, [conv_id])
         # loop through images
         for i in trange(len(img_inds)):
             img_ind = img_inds[i]
@@ -279,7 +296,6 @@ class model_injection():
                         set_sites = set(timed_site)
                         timed_site = list(set_sites)
                         num_sites = len(timed_site)
-                        # self.log("timed_site: " + str(timed_site))
                         # run the frontend PyTorch inference
                         inj_out, pre_val, post_val = inject_conv.run_hook(img, inj_ind, timed_site, mode, change_to, bit_val)
                         outputs = []
@@ -343,10 +359,15 @@ class model_injection():
             self.log(img_inds)
             print("Using given img inds...")
 
-        # get the baseline accuracy
-        print("Getting baseline...")
-        correct, total, classifications = get_baseline(self.net, img_inds, self.dataset)
-        correct_rate = correct/total
+        if not sample_correct: 
+            # get the baseline accuracy
+            print("Getting baseline correct rate...")
+            correct, total, classifications = get_baseline(self.net, img_inds, self.dataset)
+            correct_rate = correct/total
+            self.log(correct_rate)
+            print("Correct rate: " + str(correct_rate))
+        else:
+            correct_rate = 1.0
 
         # if no user layers given - use all layers
         if not layers:
@@ -354,11 +375,11 @@ class model_injection():
             layers = range(self.num_layers)
         
         # if user inj sites given - make sure given for all layers
-        # TODO: do this on a per layer basis
         if inj_sites:
-            assert(len(inj_sites) == self.num_layers)
+            assert(len(inj_sites) == len(layers))
 
         # loop through each layer
+        count = 0
         for i in layers:
             # make sure given layers is valid
             assert(i >= 0 and i < self.num_layers)
@@ -370,7 +391,7 @@ class model_injection():
             
             # if user provided sites - pass those to get_rand
             if inj_sites:
-                injs = inj_sites[i]
+                injs = inj_sites[count]
             # else pass empty (will trigger random generation)
             else:
                 injs = []
@@ -385,10 +406,8 @@ class model_injection():
             inject_conv = self.inject_convs[i]
             # inject - will output into an out file
             self.inject(img_inds, inj_inds, sites, inject_conv, i, mode=mode, change_to=change_to, bit=bit, debug_outputs=debug)
+            count += 1
 
-        # self.write_correct(correct_rate)
-        self.log(correct_rate)
-        print("correct rate: " + str(correct_rate))
         return correct_rate
 
     # return a list of num_samples in range given by bit_range
