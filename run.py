@@ -47,6 +47,7 @@ sample_inj_inds_weight =   [[(54, 0, 6, 0), (20, 2, 5, 5), (4, 1, 0, 1), (55, 1,
 
 # all taken over 1000 trials of randomly chosen images
 ALEXNET_MAX = [65.44505310058594, 153.95208740234375, 238.4318389892578, 137.9015350341797, 79.4622573852539]
+ALEXNET_MIN = [-m for m in ALEXNET_MAX]
 RESNET18_MAX = [36.13761901855469, 10.887314796447754, 3.855881929397583, 9.794642448425293, 3.2933764457702637, 
                 8.875794410705566, 4.089364528656006, 4.49278450012207, 5.494577884674072, 3.7413206100463867, 
                 5.697751522064209, 3.7465898990631104, 1.6894534826278687, 4.060337543487549, 2.0673913955688477,
@@ -107,15 +108,10 @@ def run_eyeriss_inputs():
     mem_dividers_5w = [0, 6]
     eyeriss_injection_5 = Loop(eyeriss_vars_5, mem_dividers_5i, d_type='i', sizes=var_sizes[4], input_strides=[1, 1])
     loops.append(eyeriss_injection_5)
-
-    VAL_MAX = [65.44505310058594, 153.95208740234375, 238.4318389892578, 137.9015350341797, 79.4622573852539]
-    img_inds = [46682, 7174, 25266, 20546, 21432, 11278, 34091, 43676, 36650, 35665, 1230, 5002, 43288, 40393, 7420, 32524, 34305, 18479, 7068, 10317, 40909, 408, 36743, 13065, 29275, 19160, 39110, 48822, 32220, 43096, 1219, 3221, 27341, 25203, 8125, 42698, 14530, 3210, 44292, 48187, 15912, 17289, 46640, 12198, 11693, 9411, 27420, 41892, 36781, 40879, 16616, 33695, 19354, 14178, 2492, 2783, 45270, 25813, 17976, 17925, 1394, 25675, 42908, 22083, 15782, 46222, 45715, 4099, 6151, 46450, 33650, 18904, 11190, 36895, 49823, 16408, 40557, 9920, 30480, 9598, 17606, 14870, 38048, 26602, 8300, 2585, 33886, 20564, 1501, 7154, 36094, 25587, 5677, 46361, 2653, 12684, 837, 31840, 24381, 38293]
     
     debug = True
-    layers = [1, 2]
-    inj_sites = [sample_inj_inds_input[i] for i in layers]
-    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'eyeriss', loops, maxes=VAL_MAX, overwrite=True, debug=debug)
-    mod_inj.full_inject(mode="bit", bit=5, img_inds=img_inds, debug=debug, inj_sites=inj_sites, layers=layers, sample_correct=False)
+    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'eyeriss', loops, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, overwrite=True, debug=debug)
+    mod_inj.full_inject(mode="bit", bit=5, img_inds=[], debug=debug, inj_sites=[], layers=[], sample_correct=False)
 
 def run_eyeriss_weights():
     # get the dataset and network
@@ -162,12 +158,9 @@ def run_eyeriss_weights():
     mem_dividers_5 = [0, 6]
     eyeriss_injection_5 = Loop(eyeriss_vars_5, mem_dividers_5, d_type=d_type, sizes=var_sizes[4], input_strides=[1, 1])
     loops.append(eyeriss_injection_5)
-
-    VAL_MAX = [65.44505310058594, 153.95208740234375, 238.4318389892578, 137.9015350341797, 79.4622573852539]
     
     debug = True
-    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'eyeriss', loops, 
-                                  d_type=d_type, maxes=VAL_MAX, file_addon="", debug=debug)
+    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'eyeriss', loops, d_type=d_type, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, file_addon="", debug=debug)
     mod_inj.full_inject(mode="bit", bit=5, img_inds=[], debug=debug, inj_sites=[])
 
 def run_nvdla_inputs():
@@ -219,8 +212,7 @@ def run_nvdla_inputs():
     nvdla_injection_5 = Loop(nvdla_vars_5, mem_dividers_5, d_type='i', sizes=var_sizes[4], paddings=paddings[4], input_strides=[1, 1])
     loops.append(nvdla_injection_5)
 
-    VAL_MAX = [65.44505310058594, 153.95208740234375, 238.4318389892578, 137.9015350341797, 79.4622573852539]
-    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=VAL_MAX, overwrite=True, debug=True)
+    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, overwrite=True, debug=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=5, img_inds=[], debug=True, inj_sites=[], layers=[])
     return correct_rate
 
@@ -275,10 +267,8 @@ def run_nvdla_weights():
     nvdla_injection_5 = Loop(nvdla_vars_5, mem_dividers_5w, d_type=d_type, sizes=var_sizes[4], paddings=paddings[4], input_strides=[1, 1])
     loops.append(nvdla_injection_5)
 
-    VAL_MAX = [65.44505310058594, 153.95208740234375, 238.4318389892578, 137.9015350341797, 79.4622573852539]
-    img_inds = [46682, 7174, 25266, 20546, 21432, 11278, 34091, 43676, 36650, 35665, 1230, 5002, 43288, 40393, 7420, 32524, 34305, 18479, 7068, 10317, 40909, 408, 36743, 13065, 29275, 19160, 39110, 48822, 32220, 43096, 1219, 3221, 27341, 25203, 8125, 42698, 14530, 3210, 44292, 48187, 15912, 17289, 46640, 12198, 11693, 9411, 27420, 41892, 36781, 40879, 16616, 33695, 19354, 14178, 2492, 2783, 45270, 25813, 17976, 17925, 1394, 25675, 42908, 22083, 15782, 46222, 45715, 4099, 6151, 46450, 33650, 18904, 11190, 36895, 49823, 16408, 40557, 9920, 30480, 9598, 17606, 14870, 38048, 26602, 8300, 2585, 33886, 20564, 1501, 7154, 36094, 25587, 5677, 46361, 2653, 12684, 837, 31840, 24381, 38293]
-    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=VAL_MAX, overwrite=False, debug=True, d_type=d_type)
-    mod_inj.full_inject(mode="bit", bit=5, img_inds=img_inds, debug=True, inj_sites=[], layers=[])
+    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, overwrite=False, debug=True, d_type=d_type)
+    mod_inj.full_inject(mode="bit", bit=5, img_inds=[], debug=True, inj_sites=[], layers=[])
     
 def run_eyeriss_resnet18_inputs():
     # get the dataset and network
@@ -338,24 +328,16 @@ def run_plot_weight():
 
 
 if __name__=="__main__":
-    # net = get_resnet18()
-    # layer_ids = print_layer_sizes(net)
-    # print(layer_ids)
-    # get_resnet18_max()
-    # dataset = get_dataset()
-    # print(get_conv_info(get_resnet18, dataset[0]['image']))
     
-    run_eyeriss_resnet18_inputs()
-    
-    # dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
-    # get_resnet18_max_img(dataset[25152]['image'])
-    
-    # run_nvdla_inputs()
+    # RUN THE BELOW FOR NVDLA TESTS W/ ALEXNET
+    run_nvdla_inputs()
     # run_nvdla_weights()
     
+    # RUN THE BELOW FOR EYERISS TESTS W/ ALEXNET
     # run_eyeriss_inputs()
     # run_eyeriss_weights()
     
+    # RUN THE BELOW FOR PLOTTING ONCE YOU HAVE RESULTS
     # run_plot_input()
     # run_plot_weight()
     
