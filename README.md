@@ -8,4 +8,6 @@ To start:
 
 The `ImageNet` folder provides a set of validation labels (given in `validation_labels.csv`) and a set of 100 images in the ImageNet 2012 validation dataset. To use a different dataset, see `dataset.py` for more details. 
 
-**NOTE this is a work in progress, so documentation is sparse and there are bugs/improvements that are being made**
+To generate your own mappings for different networks, you will have to install and use [Timeloop](https://github.com/NVlabs/timeloop). Example mappings are provided in `run.py` and mapping files (generated from Timeloop) for ResNet18 on Eyeriss are provided within the `timeloop_mappings` folder. 
+
+**NOTE this is a work in progress, so documentation is sparse and there are bugs/improvements that are being made.**
