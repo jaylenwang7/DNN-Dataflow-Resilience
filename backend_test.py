@@ -559,5 +559,4 @@ if __name__=="__main__":
     # test_nvdla_alexnet1_weight()
     
     test_eyeriss_resnet18_0()
-    # print(get_window_i(3, 1, 49, 58))
     pass

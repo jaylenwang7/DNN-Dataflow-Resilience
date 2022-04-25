@@ -13,7 +13,7 @@ from max_model import *
 # class for an object that is used to inject into a model (for all the conv layers of the model)
 class ModelInjection():
     # these are the data fields that are collected
-    fields = ['Img Ind', 'Inj Ind', 'Level', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'NumDiff']
+    fields = ['Img Ind', 'Inj Ind', 'Level', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'NumDiff', 'Zeros']
     d_types = ['i', 'w', 'o']
     
     # constructor
@@ -28,7 +28,7 @@ class ModelInjection():
         self.net_name = net_name                # name of the network used
         self.net = get_net()                    # given network
         clean_net = get_net()                   # make a copy of the given net to use as inside wrapper for CleanModel
-        self.clean_net = CleanModel(clean_net)    # clean network
+        self.clean_net = CleanModel(clean_net)  # clean network
         self.conv_sizes = []                    # list of sizes for each conv layer (m, p, s, r, etc.)
         self.paddings = []                      # list of padding sizes for each conv layer
         self.strides = []                       # list of stride lengths for each conv layer
@@ -128,7 +128,6 @@ class ModelInjection():
             net_inj = self.get_net()
             inject_conv = InjectConvLayer(net_inj, i, inj_loc=self.d_type)
             # set the max for this layer
-            # TODO: need to fix this
             if self.max_range:
                 inject_conv.set_range(max_vals=self.maxes, min_vals=self.mins)
             else:
@@ -259,6 +258,7 @@ class ModelInjection():
     #           inject into that error site using inject_conv
     def inject(self, img_inds, inj_inds, error_sites, inject_conv, conv_id, 
                mode="change_to", change_to=1000., bit=-1, debug_outputs=False):
+        
         bit_val = bit
         count = 0
         # set and get filenames
@@ -304,7 +304,7 @@ class ModelInjection():
                             outputs = [clean_outputs, injected_outputs]
                         # process outputs to output file
                         process_outputs(inj_out, img_ind, self.dataset[img_ind]['label'], inj_ind, inj_level, pre_val, post_val, 
-                                        num_sites, conv_id, outs=outputs, filename=self.get_filename(conv_id))
+                                        num_sites, conv_id, outs=outputs, zeros=zeros, filename=self.get_filename(conv_id))
                         
     def get_rand_imgs(self, num_imgs, sample_correct=True):
         # if classification of image doesn't matter - sample from any
@@ -383,6 +383,7 @@ class ModelInjection():
         for i in layers:
             # make sure given layers is valid
             assert(i >= 0 and i < self.num_layers)
+            print("Performing injection into Layer " + str(i) + "...")
             # for each layer need to:
             # 1) get an InjectConvLayer object for the layer and model
             # 2) set the max for the created object
@@ -572,7 +573,7 @@ def print_topk(out, correct_class, k=5):
 
     
 def process_outputs(inj_out, img_ind, correct_class, inj_ind, inj_level, pre_val, post_val, num_sites,
-                    conv_id, outs=[], k=5, filename="", log_file="debug_log.txt"):
+                    conv_id, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
     
     max_inds, confs, correct_conf, top2diff, classified_correct = print_topk(inj_out, correct_class, k)
 
@@ -581,10 +582,13 @@ def process_outputs(inj_out, img_ind, correct_class, inj_ind, inj_level, pre_val
     if outs:
         num_diff = compare_outputs(outs[0], outs[1])
         row += [num_diff]
-        # with open(log_file, 'a', newline='') as f: 
-        #     f.write("num_diff = " + str(num_diff) + ", num_sites = " + str(num_sites) + "\n")
+    else:
+        row += [None]
     
-    # row = [img_ind, inj_ind, inj_level, top2diff, correct_conf, classified_correct, max_inds, confs, pre_val, post_val, num_sites]
+    if zeros:
+        row += [zeros]
+    else:
+        row += [None]
     
     # write out data to csv file
     if filename:

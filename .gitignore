@@ -142,3 +142,6 @@ random*.py
 
 # Pickle files
 *.pickle
+
+# Scalene
+profile.json

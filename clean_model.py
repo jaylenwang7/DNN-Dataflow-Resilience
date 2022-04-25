@@ -11,6 +11,8 @@ class CleanModel(nn.Module):
         self.output_zeros = []
         self.input_zeros = []
         self.process_FC = process_FC
+        self.target_id = -1
+        self.conv_ind = 0
 
         # Register a hook for each layer
         num_conv = 0
@@ -23,12 +25,25 @@ class CleanModel(nn.Module):
                 num_conv += 1
     
     def run(self, module, input_value, output):
-        self.clean_outputs.append(output.detach().clone())
-        self.input_zeros.append((num_nonzeros(input_value[0]), input_value[0].numel()))
-        self.output_zeros.append((num_nonzeros(output), output.numel()))
+        if self.conv_ind == self.target_id or self.target_id == -1:
+            self.clean_outputs.append(output.detach().clone())
+            self.input_zeros.append((num_nonzeros(input_value[0]), input_value[0].numel()))
+            self.output_zeros.append((num_nonzeros(output), output.numel()))
+        else:
+            self.clean_outputs.append(None)
+            self.input_zeros.append(None)
+            self.output_zeros.append(None)
+        self.conv_ind += 1
+    
+    def set_target_id(self, target_id=-1):
+        self.target_id = target_id
     
     def reset(self):
         self.clean_outputs = []
+        self.output_zeros = []
+        self.input_zeros = []
+        self.conv_ind = 0
+        self.target_id = -1
         
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
@@ -47,6 +62,7 @@ class CleanModel(nn.Module):
 
 def run_clean(clean_net, test_img, conv_id=-1):
     clean_net.reset()
+    clean_net.set_target_id(conv_id)
     with torch.no_grad():
         clean_out = clean_net(test_img)
 

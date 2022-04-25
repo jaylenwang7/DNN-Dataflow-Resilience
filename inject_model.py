@@ -26,8 +26,7 @@ class InjectConvLayer(nn.Module):
         self.min_vals = []
         self.range_max = False
         self.conv_ind = 0
-        self.compare_1 = 0
-        self.compare_2 = 0
+        self.all_outs = False
         
         # set what type of injection based on user input
         self.inj_loc = inj_loc
@@ -72,7 +71,6 @@ class InjectConvLayer(nn.Module):
     
     # a hook function that will perform HW injection (given some SW error model)
     def inject(self, module, input_value, output):
-        # print("Injecting...")
         # in here you want to:
         #   1. if injecting into input - (bit flip) one of the data elements
         #   2. run a faulty Conv2d with the injected data (either input or weight)
@@ -143,10 +141,14 @@ class InjectConvLayer(nn.Module):
             # assert(False)
             
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
-        self.conv_ind += 1
-        
+            
         # 5 ===========
-        self.outputs.append(copy.deepcopy(output))
+        if self.conv_ind == self.conv_id or self.all_outs:
+            self.outputs.append(copy.deepcopy(output))
+        else:
+            self.outputs.append(None)
+        
+        self.conv_ind += 1
     
     # hook function for layers not being injected into
     # this for: 1) doing ranging, 2) for data collection
@@ -155,8 +157,13 @@ class InjectConvLayer(nn.Module):
             max_val = self.max_vals[self.conv_ind]
             min_val = self.min_vals[self.conv_ind]
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
+            
+        if self.conv_ind == self.conv_id or self.all_outs:
+            self.outputs.append(copy.deepcopy(output))
+        else:
+            self.outputs.append(None)
+            
         self.conv_ind += 1
-        self.outputs.append(copy.deepcopy(output))
     
     # set the mode of 
     def set_mode(self, mode, change_to=1000., bit=-1):
@@ -206,9 +213,7 @@ class InjectConvLayer(nn.Module):
         return self.model(x)
     
     def reset_weight(self):
-        # print("pre_value: " + str(self.pre_value))
         self.conv.weight[self.inj_coord] = self.pre_value
-        # print(self.conv.weight[self.inj_coord])
     
     # inject into a weight offline - so not as part of the hook function
     def inject_weight(self, inj_coord):
@@ -253,5 +258,5 @@ class InjectConvLayer(nn.Module):
             
         with torch.no_grad():
             out = self.forward(test_img)
-        # return (out, self.get_outputs(), self.pre_value.item(), self.post_value.item())
+
         return (out, self.pre_value.item(), self.post_value.item())

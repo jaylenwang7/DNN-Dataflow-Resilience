@@ -6,6 +6,7 @@ from loop import Loop
 from model_injection import ModelInjection
 from plotter import plotter
 from max_model import *
+# from scalene import scalene_profiler
 
 # if you want standard set of img indices to use across multiple experiments
 # set of 100 images
@@ -288,17 +289,14 @@ def run_eyeriss_resnet18_inputs():
 
     # get the loop objects
     inj_inds = []
+    layers = []
     
     loops, names = get_loops(get_resnet18, 'timeloop_maps/eyeriss/resnet18/', var_sizes, paddings, strides)
-    # print(len(loops))
-    # for loop in loops:
-    #     print(loop)
-    # assert(False)
     
     debug = True
-    layers = [1]
-    inj_inds = [[(2, 48, 37), (55, 15, 49), (35, 45, 28), (27, 36, 11), (13, 7, 29), (38, 47, 2), (14, 49, 7), (8, 47, 20)]]
-    mod_inj = ModelInjection(get_resnet18, dataset, 'resnet18', 'eyeriss', loops, maxes=RESNET18_MAX, mins=RESNET18_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
+    # layers = [1]
+    # inj_inds = [[(2, 48, 37), (55, 15, 49), (35, 45, 28), (27, 36, 11), (13, 7, 29), (38, 47, 2), (14, 49, 7), (8, 47, 20)]]
+    mod_inj = ModelInjection(get_resnet18, dataset, 'resnet18', 'eyeriss', loops, maxes=RESNET18_MAX, mins=RESNET18_MIN, overwrite=True, debug=debug, d_type=d_type, max_range=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=5, img_inds=sample_resnet18_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
     print(correct_rate)
     

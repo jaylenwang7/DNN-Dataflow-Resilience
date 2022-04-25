@@ -1409,7 +1409,6 @@ def get_window_i(W, S, I, L):
 
         assert(i < 1000)
     out_range = range(ranges[0], ranges[1])
-    print("OUT RANGE: " + str(out_range))
     return out_range
 
 # var_sizes will have the form [m, c, s, r, q, p, h, w]
@@ -1435,8 +1434,6 @@ def check_sites(sites, inj_ind, var_sizes, strides, padding=[0,0], d_type='i'):
     assert(len(var_sizes) == 8)
     
     ranges = get_window(inj_ind, var_sizes, strides, padding=padding, d_type=d_type)
-        
-    # print("OG RANGES = " + str(ranges))
         
     for site in sites:
         is_in = site[0] in ranges[0] and site[1] in ranges[1] and site[2] in ranges[2] 
