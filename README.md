@@ -7,3 +7,5 @@ To start:
 3. To run an Eyeriss or NVDLA example test, see `run.py`, which will output data to a folder called `data_results`. To run tests on either the frontend or backend, see `backend_test.py` and `frontend_test.py`.
 
 The `ImageNet` folder provides a set of validation labels (given in `validation_labels.csv`) and a set of 100 images in the ImageNet 2012 validation dataset. To use a different dataset, see `dataset.py` for more details. 
+
+**NOTE this is a work in progress, so documentation is sparse and there are bugs/improvements that are being made**
