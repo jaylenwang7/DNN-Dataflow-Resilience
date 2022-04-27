@@ -257,11 +257,8 @@ def test_eyeriss_alexnet0(spatial=True):
     eyeriss_vars = [('q', 5), ('c', 3), ('m', 4), ('p', 55), ('q', 11, True), ('s', 11, True),
                      ('r', 11), ('m', 16), ('s', 1), ('r', 1)]
     mem_dividers = [0, 2, 6]
-    # mem_dividers_1w = [0, 6]
     inj_site = (1, 143, 102)
-    # inj_site = (0, 70, 46)
     strides = [4, 4]
-    # ORDER: input, weight, output, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -271,7 +268,6 @@ def test_eyeriss_alexnet0_weight(spatial=True):
     mem_dividers = [0, 6]
     inj_site = (54, 0, 6, 0)
     strides = [4, 4]
-    # ORDER: input, weight, output, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0', spatial, 'w', strides, range_check=True, sizes=sizes, serial=False)
 
@@ -315,7 +311,6 @@ def test_eyeriss_alexnet3(spatial=True):
     eyeriss_vars = [('c', 24), ('m', 16), ('p', 13), ('q', 13, True), ('c', 4, True), ('s', 3, True),
                      ('r', 3), ('c', 4), ('m', 16), ('s', 1), ('r', 1)]
     mem_dividers = [0, 2, 7]
-    # mem_dividers_1w = [0, 6]
     inj_site = (86, 10, 11)
     strides = [1, 1]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet3', spatial, 'i', strides)
@@ -324,7 +319,6 @@ def test_eyeriss_alexnet4(spatial=True):
     eyeriss_vars = [('c', 24), ('m', 16), ('p', 13), ('q', 13, True), ('c', 4, True), ('s', 3, True),
                      ('r', 3), ('c', 4), ('m', 16), ('s', 1), ('r', 1)]
     mem_dividers = [0, 2, 6]
-    # mem_dividers_1w = [0, 6]
     inj_site = (222, 5, 6)
     strides = [1, 1]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet4', spatial, 'i', strides)
@@ -339,11 +333,6 @@ def test_eyeriss_alexnet0_no_spatial(spatial=True):
 
     inj_site = (1, 143, 102)
     strides = [4, 4]
-    
-    # inj_site = (1, 23, 27)
-    # strides = [1, 1]
-    # ORDER: input, weight, output, stride
-    # COMES IN AS: weight, output, input, padding, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0_no_spatial', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -354,26 +343,16 @@ def test_eyeriss_alexnet0_p(spatial=True):
 
     inj_site = (1, 0, 102)
     strides = [4, 4]
-    
-    # inj_site = (1, 23, 27)
-    # strides = [1, 1]
-    # ORDER: input, weight, output, stride
-    # COMES IN AS: weight, output, input, padding, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0_no_spatial', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
 def test_eyeriss_alexnet0_q(spatial=True):
-    # eyeriss_vars = [('q', 5), ('c', 3), ('m', 4), ('p', 55), ('q', 11), ('s', 11), ('r', 11), ('m', 16), ('s', 1), ('r', 1)]
     eyeriss_vars = [('q', 5), ('c', 3), ('m', 4), ('q', 11), ('s', 11), ('m', 16), ('s', 1)]
     mem_dividers = [0]
 
     inj_site = (1, 20, 0)
     strides = [4, 4]
     
-    # inj_site = (1, 23, 27)
-    # strides = [1, 1]
-    # ORDER: input, weight, output, stride
-    # COMES IN AS: weight, output, input, padding, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0_no_spatial', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -383,11 +362,6 @@ def test_eyeriss_alexnet0_qp(spatial=True):
 
     inj_site = (0, 0, 20)
     strides = [4, 4]
-    
-    # inj_site = (1, 23, 27)
-    # strides = [1, 1]
-    # ORDER: input, weight, output, stride
-    # COMES IN AS: weight, output, input, padding, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_alexnet0_no_spatial', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -477,7 +451,6 @@ def test_nvdla_alexnet0(spatial=True):
     mem_dividers = [0, 1, 10]
     inj_site = (1, 143, 102)
     strides = [4, 4]
-    # ORDER: input, weight, output, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(nvdla_vars, mem_dividers, inj_site, 'test_nvdla_alexnet0', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -487,7 +460,6 @@ def test_nvdla_alexnet0_weight(spatial=True):
     mem_dividers = [0, 1, 10]
     inj_site = (1, 143, 102)
     strides = [4, 4]
-    # ORDER: input, weight, output, stride
     sizes = [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
     run_test(nvdla_vars, mem_dividers, inj_site, 'test_nvdla_alexnet0', spatial, 'w', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -497,7 +469,6 @@ def test_nvdla_alexnet1(spatial=True):
     mem_dividers = [0, 1, 10]
     inj_site = (35, 18, 22)
     strides = [1, 1]
-    # ORDER: input, weight, output, stride
     sizes = [(192, 64, 5, 5),     (1, 192, 27, 27),   (1, 64, 27, 27),    (2, 2),     (1, 1)]
     run_test(nvdla_vars, mem_dividers, inj_site, 'test_nvdla_alexnet1', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
     
@@ -505,10 +476,8 @@ def test_nvdla_alexnet1_weight(spatial=True):
     nvdla_vars = [('m', 12), ('m', 16, True), ('c', 64), ('q', 8), ('p', 8), ('c', 1), 
                   ('s', 5), ('r', 5), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
     mem_dividers = [0, 1, 10]
-    # inj_site = (171, 53, 0, 2)
     inj_site = (13, 35, 1, 7)
     strides = [1, 1]
-    # ORDER: input, weight, output, stride
     sizes = [(192, 64, 5, 5),     (1, 192, 27, 27),   (1, 64, 27, 27),    (2, 2),     (1, 1)]
     run_test(nvdla_vars, mem_dividers, inj_site, 'test_nvdla_alexnet1', spatial, 'w', strides, range_check=True, sizes=sizes, serial=False, prune=True)
     
@@ -538,9 +507,24 @@ def test_eyeriss_resnet18_0(spatial=True):
     mem_dividers = [0, 2, 8]
     inj_site = (2, 49, 38)
     strides = [1, 1]
-    # ORDER: input, weight, output, stride
     sizes = [(64, 64, 3, 3), (1, 64, 56, 56), (1, 64, 56, 56), (1, 1), (1, 1)]
-    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_nvdla_alexnet0', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
+    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_resnet18_0', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
+    
+def test_eyeriss_resnet18_6(spatial=True):
+    eyeriss_vars = [('c', 16), ('m', 16), ('p', 14), ('q', 14, True), ('q', 1), ('c', 4, True), ('s', 3, True), ('q', 1), ('r', 3), ('c', 4), ('m', 16)]
+    mem_dividers = [0, 1, 7]
+    inj_site = (13, 16, 20)
+    strides = [1, 1]
+    sizes = [(128, 128, 3, 3), (1, 128, 28, 28), (1, 128, 28, 28), (1, 1), (1, 1)]
+    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_resnet18_6', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
+    
+def test_eyeriss_resnet18_7(spatial=True):
+    eyeriss_vars = [('q', 2), ('c', 4), ('m', 4), ('p', 14), ('m', 2, True), ('q', 7, True), ('q', 1), ('m', 2, True), ('c', 4, True), ('q', 1), ('c', 8), ('m', 16)]
+    mem_dividers = [0, 2, 9]
+    inj_site = (13, 41, 49)
+    strides = [1, 1]
+    sizes = [(128, 64, 1, 1), (1, 128, 28, 28), (1, 64, 56, 56), (0, 0), (2, 2)]
+    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_resnet18_7', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
 
 if __name__=="__main__":
 
@@ -558,5 +542,7 @@ if __name__=="__main__":
     # test_nvdla_alexnet0_weight()
     # test_nvdla_alexnet1_weight()
     
-    test_eyeriss_resnet18_0()
+    # test_eyeriss_resnet18_0()
+    # test_eyeriss_resnet18_6()
+    test_eyeriss_resnet18_7()
     pass

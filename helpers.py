@@ -116,3 +116,12 @@ def delete_files(dir, filename):
     for file in files:
         if exists(file):
             os.remove(file)
+            
+def check_inj_coord(inj_coord, stride, w):
+    return inj_coord % stride < w
+
+def check_inj_ind(inj_ind, strides, ws):
+    for i in range(len(inj_ind)):
+        if not check_inj_coord(inj_ind[i], strides[i], ws[i]):
+            return False
+    return True

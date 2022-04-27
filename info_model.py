@@ -65,14 +65,12 @@ class InfoModel(nn.Module):
     
     # hook function - appends a conv layer's data to lists
     def hook_conv_info(self, layer, input_, output):
-        # this_conv_info = [tuple(layer.weight.shape), tuple(output.shape), tuple(input_[0].shape), layer.padding, layer.stride]
         this_conv_info = ConvInfo(layer, input_, output)
         self.conv_info.append(this_conv_info)
         self.layer_info.append(this_conv_info)
     
     # hook function - appends a FC layer's data to lists
     def hook_FC_info(self, layer, input_, output):
-        # this_FC_info = [tuple(layer.weight.shape), tuple(output.shape), tuple(input_[0].shape)]
         this_FC_info = FCInfo(layer, input_, output)
         self.FC_info.append(this_FC_info)
         self.layer_info.append(this_FC_info)
@@ -122,7 +120,7 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=F
     # instantiate a table
     table = PrettyTable()
     if net_name:
-        table.title = "CONV Layer Information for " + net_name
+        table.title = "Layer Information for " + net_name
     table.field_names = ["layer #", "type", "weight", "output", "input", "padding", "stride", "layer id"]
     
     # get dataset to use; TODO: take in a function instead

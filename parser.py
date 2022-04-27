@@ -114,7 +114,7 @@ def parse_map(file_name):
         
     return loops, divs, name_dict
 
-def parse_files(dir, to_parse='**/*.map.txt'):
+def parse_files(dir, to_parse='**/*.map.txt', debug=False):
     def get_key(filename):
         filename = str(filename)
         num = ""
@@ -136,6 +136,15 @@ def parse_files(dir, to_parse='**/*.map.txt'):
         all_loops.append(loops)
         all_divs.append(divs)
         all_names.append(names)
+    
+    if debug:
+        for i in range(len(all_loops)):
+            print("Layer " + str(i) + ":")
+            print("Loops: " + str(all_loops[i]))
+            print("Divs: " + str(all_divs[i]))
+            print("Names: " + str(all_names[i]) + "\n")
         
     return all_loops, all_divs, all_names
+
+# parse_files('timeloop_maps/eyeriss/resnet18/', debug=True)
                 

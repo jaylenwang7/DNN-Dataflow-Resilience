@@ -360,8 +360,6 @@ class Loop():
             # L = input size
             # returns 
             def get_input_window(W, S, I, L, offset=0):
-                # print("W: " + str(W) + ", S: " + str(S) + ", I: " + str(I) + ", L: " + str(L) + ", off: " + str(offset))
-                # assert(I <= L)
                 i = offset
                 o = 0
                 out_off = 0
@@ -390,14 +388,12 @@ class Loop():
                     assert(i < 1000)
 
                 if len(ranges) == 1:
-                    # print("got to end: " + str(W) + " " + str(S) + " " + str(I) + " " + str(L))
                     ranges.append(o)
-                # print(ranges)
+                    
                 out_range = 0
                 try:
                     out_range = range(ranges[0], ranges[1])
                 except:
-                    print("RANGES FUCKED")
                     print(ranges)
                     print("W: " + str(W) + ", S: " + str(S) + ", I: " + str(I) + ", L: " + str(L) + ", off: " + str(offset))
                     assert(False)
@@ -410,37 +406,20 @@ class Loop():
 
             if not self.WITH_SPATIAL and not self.SERIAL:
                 if self.has_spatial['s']:
-                    # offset so it's guaranteed to hit once
-                    # y_off = index[1]%self.strides[0]
-                    # print("y offset: " + str(y_off))
-                    # self.loop_classes['s'].set_init_coord(y_off)
                     s_sp = True
                 if self.has_spatial['r']:
-                    # offset so it's guaranteed to hit once
-                    # x_off = index[2]%self.strides[1]
-                    # print("x offset: " + str(x_off))
-                    # self.loop_classes['r'].set_init_coord(x_off)
                     r_sp = True
-            
-            # y_range, y_off = get_input_window(self.weight_size[1], self.strides[0], index[1], self.input_size[1], offset=y_off)
-            # x_range, x_off = get_input_window(self.weight_size[2], self.strides[1], index[2], self.input_size[2], offset=x_off)
             
             y_range, y_off = get_input_window(self.og_sizes['s'], self.strides[0], index[1], self.input_size[1], offset=y_off)
             x_range, x_off = get_input_window(self.og_sizes['r'], self.strides[1], index[2], self.input_size[2], offset=x_off)
             
             if s_sp:
                 self.loop_classes['s'].set_init_coord(y_off)
-                # print("y offset: " + str(y_off))
             if r_sp:
                 self.loop_classes['r'].set_init_coord(x_off)
-                # print("x offset: " + str(x_off))
             
             self.window = (range(self.out_size[0]), y_range, x_range)
-            # print("WINDOW: " + str(self.window))
             return
-            
-            # # set the ranges for each of the loop_vars
-            # self.window = (range(self.out_size[0]), range(start_y, end_y), range(start_x, end_x))
         elif self.d_type == 'o':
             self.window = (range(index[0], index[0]+1), range(index[1], index[1]+1), range(index[2], index[2]+1))
         else:
@@ -820,8 +799,7 @@ class Loop():
     
     # get the ranges of the output window but with the original, unaltered (with spatial) sizes
     def get_original_window(self, inj_ind):
-        # print(inj_ind)
-        # print(self.original_sizes)
+        print(self.original_sizes)
         return get_window(inj_ind, self.original_sizes, self.strides, self.paddings, self.d_type)
     
     # run an input injection at the injection input 'inj_ind' represented by (C, H, W) at the level before 'inj_level'
@@ -867,6 +845,7 @@ class Loop():
         self.hard_reset()
         
         # for later processing, get the original window
+        print(inj_ind)
         self.original_window = self.get_original_window(inj_ind)
         print("Original window is " + str(self.original_window) + "...")
 
@@ -1408,7 +1387,13 @@ def get_window_i(W, S, I, L):
         i += S
 
         assert(i < 1000)
-    out_range = range(ranges[0], ranges[1])
+    try:
+        out_range = range(ranges[0], ranges[1])
+    except:
+        print(ranges)
+        print("Weight width: %d\nStride: %d\nTarget input index: %d\nInput size: %d"%(W, S, I, L))
+        assert(False)
+        
     return out_range
 
 # var_sizes will have the form [m, c, s, r, q, p, h, w]

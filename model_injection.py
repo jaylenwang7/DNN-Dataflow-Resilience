@@ -447,20 +447,34 @@ class ModelInjection():
         print("Get randing...")
         inject_loop = self.loops[layer_ind]
         c_info = self.conv_sizes[layer_ind] # [m, c, s, r, q, p, h, w]
+        stride = self.strides[layer_ind]
         # need to use transformed sizes instead of the conv_sizes
         # actually want to use original size and then transform into transformed internally
         if self.d_type == 'w':
-            #         m          c          s          r
-            limits = (c_info[0], c_info[1], c_info[2], c_info[3])
+            # use first four indices: m, c, s, r
+            limits = [range(c_info[i]) for i in range(4)]
         elif self.d_type == 'i':
-            #         c          h          w
             def reduce_by_10(limits):
-                new_limits = list(limits)
+                new_limits = []
+                # new_limits = list(limits)
                 for i in range(len(limits)):
-                    new_limits[i] -= new_limits[i]//10
-                return tuple(new_limits)
-
+                    new_limits.append(range(limits[i] - limits[i]//10))
+                return new_limits
+            
+            # removes any indices that are not possible based on stride and weight size
+            def check_stride_width(limit, stride, w):
+                if stride <= w:
+                    return limit
+                
+                new_limits = []
+                for l in limit:
+                    if check_inj_coord(l, stride, w):
+                        new_limits.append(l)
+                return new_limits
+            
+            #                      c          h          w
             limits = reduce_by_10((c_info[1], c_info[6], c_info[7]))
+            limits = [limits[0], check_stride_width(limits[1], stride[0], c_info[2]), check_stride_width(limits[2], stride[1], c_info[3])]
         else:
             assert(False)
 
@@ -470,6 +484,12 @@ class ModelInjection():
             inj_inds = self.get_rand_inds(limits, num_injs)
         else:
             self.log("Using given inj_inds for layer " + str(layer_ind))
+            # check that the injection indices passed in by the user are valid
+            # only need to do this if injecting into inputs
+            if self.d_type == 'i':
+                for inj in inj_inds:
+                    if not check_inj_ind(inj[1:], stride, (c_info[2], c_info[3])):
+                        raise Exception("Invalid injection given for the stride and weight size of the layer.")
         self.log(inj_inds)
         
         # collect sites for all three levels and all 10 indices
