@@ -799,7 +799,6 @@ class Loop():
     
     # get the ranges of the output window but with the original, unaltered (with spatial) sizes
     def get_original_window(self, inj_ind):
-        print(self.original_sizes)
         return get_window(inj_ind, self.original_sizes, self.strides, self.paddings, self.d_type)
     
     # run an input injection at the injection input 'inj_ind' represented by (C, H, W) at the level before 'inj_level'
@@ -845,7 +844,6 @@ class Loop():
         self.hard_reset()
         
         # for later processing, get the original window
-        print(inj_ind)
         self.original_window = self.get_original_window(inj_ind)
         print("Original window is " + str(self.original_window) + "...")
 

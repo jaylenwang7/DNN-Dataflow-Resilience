@@ -420,7 +420,7 @@ class ModelInjection():
     # TODO: can change this to use numpy and be faster
     def get_rand_inds(self, lims, num_injs):
         # create sampled indices for each lim
-        ind_sets = [random.choices(range(lim), k=num_injs) for lim in lims]
+        ind_sets = [random.choices(lim, k=num_injs) for lim in lims]
 
         # return a list of the indices (as list of tuples)
         inj_inds = []
@@ -456,7 +456,6 @@ class ModelInjection():
         elif self.d_type == 'i':
             def reduce_by_10(limits):
                 new_limits = []
-                # new_limits = list(limits)
                 for i in range(len(limits)):
                     new_limits.append(range(limits[i] - limits[i]//10))
                 return new_limits

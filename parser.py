@@ -145,6 +145,4 @@ def parse_files(dir, to_parse='**/*.map.txt', debug=False):
             print("Names: " + str(all_names[i]) + "\n")
         
     return all_loops, all_divs, all_names
-
-# parse_files('timeloop_maps/eyeriss/resnet18/', debug=True)
                 
