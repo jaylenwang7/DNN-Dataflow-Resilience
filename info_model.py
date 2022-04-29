@@ -132,19 +132,23 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=F
     layer_info, _ = vnet.get_info()
     
     # loop through layers and collect data while printing
-    layer_num = 1
+    # layer_num = number of the layer (not necessarily unique)
+    # layer_id = number of last unique layer seen (counts unique layers)
+    # curr_id = layer_id of the currently processed layer
+    layer_num = layer_id = curr_id = 0
+    layer_id = -1
     layer_dict = {}
-    curr_id = 1
-    layer_id = 0
     layer_ids = []
+    
+    # loop through all layer_infos
     for linfo in layer_info:
         # get the shape of the layer
         vinfo = tuple(linfo.get_shapes())
         # if not seen shape before (new layer shape)
         if vinfo not in layer_dict:
-            layer_dict[vinfo] = layer_num
-            curr_id = layer_num
             layer_id += 1
+            layer_dict[vinfo] = layer_id
+            curr_id = layer_id
         # else seen before
         else:
             # get the ID of the layer
@@ -154,11 +158,11 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=F
         
         if isinstance(linfo, ConvInfo):
             row.append("CONV")
-            layer_ids.append(layer_id)
+            layer_ids.append(curr_id)
         elif isinstance(linfo, FCInfo):
             row.append("FC")
             if return_FC:
-                layer_ids.append(layer_id)
+                layer_ids.append(curr_id)
         else:
             assert(False)
             

@@ -1,4 +1,5 @@
 from pathlib import Path
+import helpers
 
 class mem_info():
     def __init__(self, name: str):
@@ -115,16 +116,9 @@ def parse_map(file_name):
     return loops, divs, name_dict
 
 def parse_files(dir, to_parse='**/*.map.txt', debug=False):
-    def get_key(filename):
-        filename = str(filename)
-        num = ""
-        for s in filename:
-            if s.isdigit():
-                num += s
-        return int(num)
-        
+    
     # get list of all txt files in dir
-    pathlist = sorted(Path(dir).glob(to_parse), key=get_key)
+    pathlist = sorted(Path(dir).glob(to_parse), key=helpers.get_str_num)
     
     all_loops = []
     all_divs = []

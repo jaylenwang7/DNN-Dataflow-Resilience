@@ -360,10 +360,16 @@ class Loop():
             # L = input size
             # returns 
             def get_input_window(W, S, I, L, offset=0):
+                # i is the beginning of the input window
+                # so [i, i+W) gives the current window
                 i = offset
+                # current output index being calculated
                 o = 0
+                # 
                 out_off = 0
+                # range of output indices that use the given target index
                 ranges = []
+                # whether window is covering the target index
                 in_range = False
                 while True:
                     if i + W > L and len(ranges) == 2:
@@ -399,7 +405,6 @@ class Loop():
                     assert(False)
                 return out_range, out_off
             
-            # for m - inputs affect all output channels
             y_off = x_off = 0
             s_sp = False
             r_sp = False
@@ -773,6 +778,8 @@ class Loop():
                 # can get rid of the c
                 # get m and set rest to 0
                 new_ind = [new_ind[0], 0, 0]
+                
+                # if m is spatial, then set m to 0 too and same the og value
                 if self.has_spatial['m']:
                     # save the m value - since this shows up in output
                     self.spatial_m_val = inj_ind[0]
@@ -781,7 +788,6 @@ class Loop():
                 assert(len(inj_ind) == 3)
                 new_ind[1] //= self.num_spatial['q']
                 new_ind[2] //= self.num_spatial['p']
-                print("Transformed index = " + str(tuple(new_ind)))
             elif self.d_type == 'o':
                 assert(len(inj_ind) == 3)
                 new_ind = inj_ind
@@ -794,7 +800,7 @@ class Loop():
                 new_ind = [new_ind[0], new_ind[2], new_ind[3]]
             elif self.d_type == 'i':
                 new_ind = new_ind
-        
+        print("Transformed index = " + str(tuple(new_ind)))
         return tuple(new_ind)
     
     # get the ranges of the output window but with the original, unaltered (with spatial) sizes

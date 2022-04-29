@@ -3,12 +3,13 @@ from pathlib import Path
 from IPython.display import display
 from helpers import *
 import pandas as pd
+import os
 
 # object used to plot data
-class plotter():
-    def __init__(self, arch_name, num_layers, net_name, d_type='i', add_on=''):
+class Plotter():
+    def __init__(self, arch_name, net_name, layers=[], d_type='i', add_on=''):
         self.arch_name = arch_name
-        self.num_layers = num_layers
+        self.layers = layers
         self.net_name = net_name
         self.filenames = []
         self.d_type = ''
@@ -16,13 +17,20 @@ class plotter():
             self.d_type_name = 'inputs'
         elif d_type == 'w':
             self.d_type_name = 'weights'
+        if not self.layers:
+            self.get_layers()
         self.set_filenames(add_on)
+        
+    def get_layers(self):
+        layers = [os.path.basename(os.path.normpath(f.path)) for f in os.scandir("data_results/" + self.arch_name + "/" + self.net_name + "/") if f.is_dir()]
+        layers = [get_str_num(layer) for layer in layers]
+        self.layers = [layer for layer in layers if layer != None]
 
     def set_filenames(self, add_on=''):
         top_dir = "data_results/" + self.arch_name + "/" + self.net_name
         self.top_dir = top_dir
         # get the filenames for each layer
-        for i in range(self.num_layers):
+        for i in self.layers:
             # create the nested directories
             dir = top_dir + "/conv" + str(i) + "/"
             filename = dir + "data_" + self.d_type_name
@@ -70,7 +78,7 @@ class plotter():
     # collect data for all layers - grouped by the axis_title
     def agg_layer_data(self, axis_title):
         all_df = []
-        for i in range(self.num_layers):
+        for i in range(len(self.filenames)):
             df = pd.read_csv(self.filenames[i])
             all_df.append(df)
         final_df = pd.concat(all_df, ignore_index=True)
@@ -88,7 +96,7 @@ class plotter():
         
         if not agg_layers:
             # loop through layers
-            for i in range(self.num_layers):
+            for i in range(len(self.layers)):
                 # collect data aggregated by level
                 level_data = self.collect_layer_data(i, "Level")
 
@@ -104,7 +112,7 @@ class plotter():
                 ax.set_xticks(tick_list)
                 ax.set_xticklabels(xlabels, fontsize=12)
                 
-                labels.append("Conv" + str(i))
+                labels.append("Conv" + str(self.layers[i]))
         else:
             level_data = self.agg_layer_data("Level")
             # plot the error rate

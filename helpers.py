@@ -6,7 +6,7 @@ import numpy as np
 import pickle
 from loop import *
 from info_model import *
-from parser import *
+from parser import parse_files
 from pathlib import Path
 
 def get_alexnet():
@@ -96,20 +96,33 @@ def get_pickle(filename:str):
     with open(filename, 'rb') as f:
         pickle.load(f)
         
-def get_loops(get_net, dir, sizes, paddings, strides, to_parse='**/*.map.txt', d_type='i'):
+def get_loops(get_net, dir, sizes, paddings, strides, to_parse='**/*.map.txt', d_type='i', print_out=False):
     net = get_net()
+    # parse the files in the given dir and get info
     loops, divs, names = parse_files(dir, to_parse)
+    # get the memory names from the first layer
+    out_names = [names[0][div] for div in divs[0][d_type]]
+    # use print_layer_sizes to get the layer_ids
     layer_ids = print_layer_sizes(net, do_print=False)
     
     # TODO: you can reuse loop objects for layers of same size - just need to reset things
     out_loops = []
+    # loop through each layer
     for i in range(len(layer_ids)):
-        layer_id = layer_ids[i] - 1
+        # get layer_id and create loop object
+        layer_id = layer_ids[i]
         new_loop = Loop(loops[layer_id], divs[layer_id][d_type], d_type=d_type, input_strides=strides[i], 
                         sizes=sizes[i], paddings=paddings[i])
+        # add to list of loop objects
         out_loops.append(new_loop)
-        
-    return out_loops, names
+    
+    # print out each loop if desired
+    if print_out:
+        for i in range(len(out_loops)):
+            print("Layer " + str(i) + ":")
+            print(out_loops[i])
+
+    return out_loops, out_names
 
 def delete_files(dir, filename):
     files = Path(dir).glob("**/" + filename)
@@ -125,3 +138,14 @@ def check_inj_ind(inj_ind, strides, ws):
         if not check_inj_coord(inj_ind[i], strides[i], ws[i]):
             return False
     return True
+
+def get_str_num(in_string):
+    in_string = str(in_string)
+    num = ""
+    for s in in_string:
+        if s.isdigit():
+            num += s
+    if num.isdigit():
+        return int(num)
+    else:
+        return None

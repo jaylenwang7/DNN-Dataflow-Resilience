@@ -9,6 +9,7 @@ from pathlib import Path
 from inject_model import InjectConvLayer
 from info_model import *
 from max_model import *
+import logging
 
 # class for an object that is used to inject into a model (for all the conv layers of the model)
 class ModelInjection():
@@ -406,7 +407,12 @@ class ModelInjection():
             # get the inject_conv object for this layer
             inject_conv = self.inject_convs[i]
             # inject - will output into an out file
-            self.inject(img_inds, inj_inds, sites, inject_conv, i, mode=mode, change_to=change_to, bit=bit, debug_outputs=debug)
+            try:
+                self.inject(img_inds, inj_inds, sites, inject_conv, i, mode=mode, change_to=change_to, bit=bit, debug_outputs=debug)
+            except:
+                err_mess = "Error during layer " + str(i)
+                print(err_mess)
+                self.log(err_mess)
             count += 1
 
         return correct_rate
