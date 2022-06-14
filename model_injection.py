@@ -14,7 +14,7 @@ import logging
 # class for an object that is used to inject into a model (for all the conv layers of the model)
 class ModelInjection():
     # these are the data fields that are collected
-    fields = ['Img Ind', 'Inj Ind', 'Level', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'NumDiff', 'Zeros']
+    fields = ['Img Ind', 'Inj Ind', 'Level', 'Bit', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top 10', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'XEntropy','NumDiff', 'Zeros']
     d_types = ['i', 'w', 'o']
     
     # constructor
@@ -272,7 +272,7 @@ class ModelInjection():
             img = torch.unsqueeze(self.dataset[img_ind]['image'], 0)
 
             if debug_outputs:
-                clean_outputs, zeros = run_clean(self.clean_net, img, conv_id)
+                clean_out, clean_outputs, zeros = run_clean(self.clean_net, img, conv_id)
             
             # loop through inj locations
             for ind in range(len(inj_inds)):
@@ -291,7 +291,6 @@ class ModelInjection():
                         timed_site = level_sites[t]
                         if type(bit) is list:
                             bit_val = bit[count]
-                            count += 1
                         
                         # num_sites = len(timed_site)
                         set_sites = set(timed_site)
@@ -302,10 +301,12 @@ class ModelInjection():
                         outputs = []
                         if debug_outputs:
                             injected_outputs = inject_conv.get_output(conv_id)
-                            outputs = [clean_outputs, injected_outputs]
+                            outputs = [clean_outputs, injected_outputs, clean_out]
                         # process outputs to output file
                         process_outputs(inj_out, img_ind, self.dataset[img_ind]['label'], inj_ind, inj_level, pre_val, post_val, 
-                                        num_sites, conv_id, outs=outputs, zeros=zeros, filename=self.get_filename(conv_id))
+                                        num_sites, conv_id, bit_val, outs=outputs, zeros=zeros, filename=self.get_filename(conv_id))
+                # increment after changing injection location
+                count += 1
                         
     def get_rand_imgs(self, num_imgs, sample_correct=True):
         # if classification of image doesn't matter - sample from any
@@ -349,7 +350,7 @@ class ModelInjection():
         
         self.log("Starting new injection")
 
-        # get a sample of 100 images to use
+        # get a sample of num_imgs images to use
         if not img_inds:
             print("Getting img inds...")
             img_inds = self.get_rand_imgs(num_imgs, sample_correct=sample_correct)
@@ -402,17 +403,17 @@ class ModelInjection():
             sites, inj_inds, total_num = self.get_rand(i, inj_inds=injs)
             # if bit is passed as range, then sample random bits (one for each sample)
             if type(bit) is range:
-                bit = self.get_rand_bits(bit, total_num)
+                bit = self.get_rand_bits(bit, total_num*num_imgs)
 
             # get the inject_conv object for this layer
             inject_conv = self.inject_convs[i]
             # inject - will output into an out file
-            try:
-                self.inject(img_inds, inj_inds, sites, inject_conv, i, mode=mode, change_to=change_to, bit=bit, debug_outputs=debug)
-            except:
-                err_mess = "Error during layer " + str(i)
-                print(err_mess)
-                self.log(err_mess)
+            # try:
+            self.inject(img_inds, inj_inds, sites, inject_conv, i, mode=mode, change_to=change_to, bit=bit, debug_outputs=debug)
+            # except:
+            #     err_mess = "Error during layer " + str(i)
+            #     print(err_mess)
+            #     self.log(err_mess)
             count += 1
 
         return correct_rate
@@ -598,13 +599,17 @@ def print_topk(out, correct_class, k=5):
 
     
 def process_outputs(inj_out, img_ind, correct_class, inj_ind, inj_level, pre_val, post_val, num_sites,
-                    conv_id, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
+                    conv_id, bit, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
     
     max_inds, confs, correct_conf, top2diff, classified_correct = print_topk(inj_out, correct_class, k)
 
-    row = [img_ind, inj_ind, inj_level, top2diff, correct_conf, classified_correct, max_inds, confs, pre_val, post_val, num_sites]
+    row = [img_ind, inj_ind, inj_level, bit, top2diff, correct_conf, classified_correct, max_inds, confs, pre_val, post_val, num_sites]
 
     if outs:
+        loss = nn.CrossEntropyLoss()
+        xentropy = loss(inj_out, outs[2]).item()
+        row += [xentropy]
+        
         num_diff = compare_outputs(outs[0], outs[1])
         row += [num_diff]
     else:

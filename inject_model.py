@@ -91,12 +91,7 @@ class InjectConvLayer(nn.Module):
             
             # change the value depending on the mode
             if self.mode == 0:
-                try:
-                    inject_val = bitflip.flip_bit(inject_val, self.bit)
-                except:
-                    print(inject_val)
-                    print(self.bit)
-                    assert(False)
+                inject_val = bitflip.flip_bit(inject_val, self.bit)
             elif self.mode == 1:
                 inject_val = bitflip.flip_random_bit(inject_val)
             elif self.mode == 2:
@@ -172,6 +167,7 @@ class InjectConvLayer(nn.Module):
             self.bit = bit
             self.mode = 0
         elif mode == "rand_bit":
+            assert(False and "not implemented")
             self.mode = 1
         elif mode == "change_to":
             self.mode = 2

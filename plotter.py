@@ -1,9 +1,12 @@
 from matplotlib import pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from pathlib import Path
 from IPython.display import display
+from torch import zeros_like
 from helpers import *
 import pandas as pd
 import os
+import functools as ft
 
 # object used to plot data
 class Plotter():
@@ -35,7 +38,7 @@ class Plotter():
             dir = top_dir + "/conv" + str(i) + "/"
             filename = dir + "data_" + self.d_type_name
             if add_on:
-                filename += "_" + add_on
+                filename += add_on
             filename += ".csv"
             self.filenames.append(filename)
 
@@ -47,27 +50,55 @@ class Plotter():
     
     # manipulate data along axis_title on the passed in df
     def agg_data(self, df, axis_title):
+        # group by user input
         group = df.groupby([axis_title])
         
+        # get the aggregate statistics wanted (mean, stddev)
         data2collect = ["CorrectClassConf"]
-        
         data_mean = group[data2collect].mean()
         data_mean = data_mean.add_suffix("_mean")
-        
         data_std = group[data2collect].std()
         data_std = data_std.add_suffix("_std")
-        
         data = data_mean.join(data_std)
         
+        # get the number of samples and error rate
         num_samples = group.size()
         error_rate = group["ClassifiedCorrect"].sum() / num_samples
         error_rate.name = "Error Rate"
         num_samples.name = "Num Samples"
-        
         data = data.join(error_rate)
         data = data.join(num_samples)
         
         return data
+    
+    def get_zero_data(self, df):
+        # get the zero rate
+        data_zeros = df["Zeros"]
+        ndata = 3
+        zeros = [0]*ndata
+        tots = [0]*ndata
+        # loop through each data point in the group data
+        for z in data_zeros:
+            # get the entire tuple
+            zero_tuple = eval(z)
+            # loop through each zero tuple
+            for i in range(ndata):
+                # sum up number of zeros and total number of els
+                zeros[i] += zero_tuple[i][0]
+                tots[i] += zero_tuple[i][1]
+
+        # aggregate the data
+        return (zeros[0]/tots[0], zeros[1]/tots[1], zeros[2]/tots[2])
+    
+    def collect_zero_data(self):
+        out_data = [[] for i in range(3)]
+        for i in range(len(self.layers)):
+            df = pd.read_csv(self.filenames[i])
+            zero_data = self.get_zero_data(df)
+            for i in range(3):
+                out_data[i].append(zero_data[i])
+            
+        return out_data
 
     # collect necessary data along an axis of the collected data
     # given by axis_title - for the layer conv_id
@@ -77,12 +108,29 @@ class Plotter():
     
     # collect data for all layers - grouped by the axis_title
     def agg_layer_data(self, axis_title):
+        # list of all dfs, one for each layer file
         all_df = []
+        # loop through all layer files and collect dfs
         for i in range(len(self.filenames)):
             df = pd.read_csv(self.filenames[i])
             all_df.append(df)
+        # concat all the layer dfs and aggregate it
         final_df = pd.concat(all_df, ignore_index=True)
         return self.agg_data(final_df, axis_title)
+    
+    def plot_zeros(self):
+        # plot on x axis the layers and on y axis the sparsity
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
+        zero_data = self.collect_zero_data()
+        # plot for output, input, weight
+        for i in range(len(zero_data)):
+            ax = plt.plot(self.layers, zero_data[i])
+            
+        fig.legend(labels=["Outputs", "Inputs", "Weights"],
+                   loc="right")
+        
+        img_name = get_new_filename(self.img_dir + "zeros", "png")
+        plt.savefig(img_name)
 
     # plot the aggregated results of all the layers on the same plot
     # compared to the baseline
@@ -148,3 +196,27 @@ class Plotter():
             plt.savefig(img_name)
         if show:
             plt.show()
+            
+    def plot_v2(self, level_names=[]):
+        # plot on x axis the layers and on y axis the sparsity
+        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
+        zero_data = self.collect_zero_data()
+        # plot for output, input, weight
+        level_data = self.collect_layer_data(0, "Level")
+        nlevels = len(level_data['Error Rate'].tolist())
+        all_levels = [[] for i in range(nlevels)]
+        for i in range(len(self.layers)):
+            level_data = self.collect_layer_data(i, "Level")
+            level_data = level_data['Error Rate'].tolist()
+            for j in range(nlevels):
+                all_levels[j].append(level_data[j])
+        
+        for i in range(nlevels):
+            ax = plt.plot(self.layers, all_levels[i])
+            
+        fig.legend(labels=level_names,
+                    loc="right")
+        axes.xaxis.set_major_locator(MaxNLocator(integer=True))
+        
+        img_name = get_new_filename(self.img_dir + "layers", "png")
+        plt.savefig(img_name)

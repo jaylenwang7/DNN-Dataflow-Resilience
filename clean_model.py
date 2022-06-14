@@ -67,6 +67,6 @@ def run_clean(clean_net, test_img, conv_id=-1):
         clean_out = clean_net(test_img)
 
     if conv_id == -1:
-        return clean_net.get_clean_outputs(), clean_net.get_nonzeros()
+        return clean_out, clean_net.get_clean_outputs(), clean_net.get_nonzeros()
     else:
-        return clean_net.get_clean_output(conv_id), clean_net.get_nonzero(conv_id)
+        return clean_out, clean_net.get_clean_output(conv_id), clean_net.get_nonzero(conv_id)

@@ -139,6 +139,7 @@ scratch.py
 test_stuff.py
 debug*.txt
 random*.py
+*-test.py
 
 # Pickle files
 *.pickle

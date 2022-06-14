@@ -19,19 +19,13 @@ def pretty_print(sites, window, timed=False, filename='test.txt', ):
         f.write("og window: " + str(window) + "\n")
         for s in sites:
             f.write(str(num_s) + " ----------" + "\n")
-            # print(str(num_s) + " ----------")
             num_s += 1
             for p in s:
                 if timed:
                     for g in p:
                         f.write("**  " + str(g) + "\n")
-                        # print("**  " + str(g))
-                        # print('')
                 else:
                     f.write("** " + str(p) + "\n")
-                    # print("** " + str(p))
-                    # print('')
-        
         f.write("============================================================\n")
         f.write("============================================================\n")
 
@@ -52,6 +46,8 @@ def run_test(vars, dividers, inj_site, filename, spatial=True, d_type='i', strid
         
     if sizes:
         var_sizes = list(sizes[0]) + list(sizes[1][2:]) + list(sizes[2][2:])
+    else:
+        var_sizes = []
 
     injection = Loop(vars, dividers, d_type=d_type, input_strides=stride, out_file=filename, serial=serial, sizes=var_sizes)
     _, sites = injection.inject_full(inj_site)
@@ -521,10 +517,25 @@ def test_eyeriss_resnet18_6(spatial=True):
 def test_eyeriss_resnet18_7(spatial=True):
     eyeriss_vars = [('q', 2), ('c', 4), ('m', 4), ('p', 14), ('m', 2, True), ('q', 7, True), ('q', 1), ('m', 2, True), ('c', 4, True), ('q', 1), ('c', 8), ('m', 16)]
     mem_dividers = [0, 2, 9]
-    inj_site = (13, 41, 49)
-    strides = [1, 1]
+    inj_site = (32, 10, 30)
+    strides = [2, 2]
     sizes = [(128, 64, 1, 1), (1, 128, 28, 28), (1, 64, 56, 56), (0, 0), (2, 2)]
     run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_resnet18_7', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
+    
+def test_eyeriss_resnet18_13(spatial=True):
+    eyeriss_vars = [('q', 2), ('c', 4), ('m', 4), ('p', 14), ('m', 2, True), ('q', 7, True), ('q', 1), ('m', 2, True), ('c', 4, True), ('q', 1), ('c', 8), ('m', 16)]
+    mem_dividers = [0, 2, 9]
+    inj_site = (32, 10, 30)
+    strides = [1, 1]
+    sizes = [(256, 256, 3, 3), (1, 256, 14, 14), (1, 256, 14, 14), (1, 1), (1, 1) ]
+    run_test(eyeriss_vars, mem_dividers, inj_site, 'test_eyeriss_resnet18_7', spatial, 'i', strides, range_check=True, sizes=sizes, serial=False)
+    
+def test_weight1_stride2(spatial=True):
+    vars = [('q', 2), ('q', 3, True), ('s', 1)]
+    mem_dividers = [0]
+    inj_site = (0, 4, 0)
+    strides = [2, 2]
+    run_test(vars, mem_dividers, inj_site, 'test_weight1_stride2', spatial, 'i', strides)
 
 if __name__=="__main__":
 
@@ -544,5 +555,9 @@ if __name__=="__main__":
     
     # test_eyeriss_resnet18_0()
     # test_eyeriss_resnet18_6()
-    test_eyeriss_resnet18_7()
+    # test_eyeriss_resnet18_7()
+    
+    test_weight1_stride2()
+    
+    # test_spatial_q()
     pass

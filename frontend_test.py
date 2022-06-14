@@ -97,7 +97,7 @@ def test_inject():
     inject_net = InjectConvLayer(alexnet, conv_id)
 
     clean_net = CleanModel(clean_alexnet)
-    clean_output, zeros = run_clean(clean_net, img, conv_id)
+    _, clean_output, zeros = run_clean(clean_net, img, conv_id)
 
     # scalene_profiler.start()
     inject_net.run_hook(img, inj_coord, sites)
@@ -127,7 +127,7 @@ def test_inject():
     inject_net = InjectConvLayer(resnet18, conv_id)
 
     clean_net = CleanModel(clean_resnet18)
-    clean_output, zeros = run_clean(clean_net, img, conv_id)
+    _, clean_output, zeros = run_clean(clean_net, img, conv_id)
 
     inject_net.run_hook(img, inj_coord, sites)
     
