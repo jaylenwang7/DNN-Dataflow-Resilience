@@ -15,6 +15,12 @@ class LayerInfo():
     def get_vars(self):
         pass
     
+    def get_padding(self):
+        pass
+    
+    def get_stride(self):
+        pass
+    
 class ConvInfo(LayerInfo):
     def __init__(self, layer, inp, outp):
         super().__init__(layer, inp, outp)
@@ -31,6 +37,7 @@ class ConvInfo(LayerInfo):
         return self.stride
     
     def get_vars(self):
+        # need to return in order (m, c, s, r, q, p, h, w)
         shapes = self.get_shapes()
         return list(shapes[0]) + list(shapes[1][2:]) + list(shapes[2][2:])
         
@@ -42,15 +49,31 @@ class FCInfo(LayerInfo):
         return [self.wshape, self.oshape, self.ishape]
     
     def get_vars(self):
+        # need to return in order (m, c, s, r, q, p, h, w) - only m,c are not 1
         shapes = self.get_shapes()
-        return list(shapes[0])
+        if len(shapes[1]) == 2:
+            return list(shapes[0]) + [1, 1, 1, 1, 1, 1]
+        elif len(shapes[1]) == 3:
+            extra_dim = [shapes[1][1]]
+            return list(shapes[0]) + [1, 1, 1] + extra_dim + [1] + extra_dim
+        else:
+            assert(False and "shape of FC layer not recognized")
+    
+    # use hard-coded values for FC
+    def get_padding(self):
+        return (0, 0)
+    def get_stride(self):
+        return (1, 1)
+    
+    def get_input_size(self):
+        shapes = self.get_shapes()
+        return len(shapes[1])
 
 # model wrapper to print layer sizes
 class InfoModel(nn.Module):
     def __init__(self, model: nn.Module, process_FC=False):
         super().__init__()
         self.model = model
-        self.conv_count = 0
         self.layer_info = []
         self.conv_info = []
         self.FC_info = []
@@ -58,7 +81,7 @@ class InfoModel(nn.Module):
         
         # Register a hook for each layer
         for layer in self.model.modules():
-            if isinstance(layer, (nn.Conv2d, nn.quantized.Conv2d)):
+            if isinstance(layer, nn.Conv2d):
                 layer.register_forward_hook(self.hook_conv_info)
             elif isinstance(layer, nn.Linear) and self.process_FC:
                 layer.register_forward_hook(self.hook_FC_info)
@@ -97,26 +120,30 @@ class InfoModel(nn.Module):
     def get_FC_info(self):
         return self.FC_info, self.get_vars(self.FC_info)
     
-def get_conv_info(get_net: callable, img):
+def get_layer_info(get_net: callable, img, with_FC=True):
     verb_net = get_net()
-    vnet = InfoModel(verb_net)
+    vnet = InfoModel(verb_net, process_FC=with_FC)
     vnet(img)
-    conv_info, var_sizes = vnet.get_info()
-    num_layers = len(conv_info)
-    # vnet.conf_info has the form [weight, output, input, pad, stride] for each layer
+    layers_info, var_sizes = vnet.get_info()
+    num_layers = len(layers_info)
+    # vnet.conv_info has the form [weight, output, input, pad, stride] for each layer
     # weight (m, c, s, r), output (1, m, q, p), input (1, c, h, w)
     # var_sizes will have the form [m, c, s, r, q, p, h, w]
     paddings = []
     strides = []
+    FC_types = []
     for i in range(num_layers):
-        layer_info = conv_info[i]
-        if isinstance(layer_info, ConvInfo):
-            paddings.append(layer_info.get_padding())
-            strides.append(layer_info.get_stride())
+        layer_info = layers_info[i]
+        paddings.append(layer_info.get_padding())
+        strides.append(layer_info.get_stride())
+        if isinstance(layer_info, FCInfo):
+            FC_types.append(layer_info.get_input_size())
+        else:
+            FC_types.append(-1)
         
-    return num_layers, var_sizes, paddings, strides
+    return num_layers, var_sizes, paddings, strides, FC_types
 
-def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=False):
+def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=True, return_inc=False):
     # instantiate a table
     table = PrettyTable()
     if net_name:
@@ -137,17 +164,24 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=F
     # curr_id = layer_id of the currently processed layer
     layer_num = layer_id = curr_id = 0
     layer_id = -1
+    layer_inc = -1
+    inc_dict = {}
     layer_dict = {}
     layer_ids = []
     
     # loop through all layer_infos
     for linfo in layer_info:
+        layer_inc += 1
         # get the shape of the layer
         vinfo = tuple(linfo.get_shapes())
         # if not seen shape before (new layer shape)
         if vinfo not in layer_dict:
+            # increment layer_id since new
             layer_id += 1
+            # add the shape to the dict
             layer_dict[vinfo] = layer_id
+            inc_dict[layer_id] = layer_inc
+            # change curr_id
             curr_id = layer_id
         # else seen before
         else:
@@ -179,4 +213,7 @@ def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=F
     if do_print:
         print(table)
     
-    return layer_ids
+    if return_inc:
+        return [inc_dict[layer_id] for layer_id in layer_ids]
+    else:
+        return layer_ids

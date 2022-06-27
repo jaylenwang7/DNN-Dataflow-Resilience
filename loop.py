@@ -28,6 +28,8 @@ class Loop():
         self.og_sizes = og_sizes
         self.get_og_sizes(input_vars_in)
         self.d_type = d_type
+        assert(len(input_strides) == 2)
+        assert(len(paddings) == 2)
         self.strides = input_strides
 
         self.WITH_SPATIAL = False
@@ -1407,11 +1409,14 @@ def get_window(inj_ind, var_sizes, strides=[1,1], padding=[0,0], d_type='i'):
     h += padding[0]
     w += padding[1]
     
+    # if i - do quick calculation to get the window
     if d_type == 'i':
         return (range(m), get_window_i(s, strides[0], inj_ind[1], h), get_window_i(r, strides[1], inj_ind[2], w))
+    # if w - then it's just the whole output channel (of the m)
     elif d_type == 'w':
         m = inj_ind[0]
         return (range(m, m+1), range(q), range(p))
+    # if o - then it's just the exact inj_ind - so just turn that into ranges
     elif d_type == 'o':
         inj_m, inj_q, inj_p = inj_ind
         return (range(inj_m, inj_m+1), range(inj_q, inj_q+1), range(inj_p, inj_p+1),)

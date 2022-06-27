@@ -119,17 +119,23 @@ def parse_files(dir, to_parse='**/*.map.txt', debug=False):
     
     # get list of all txt files in dir
     pathlist = sorted(Path(dir).glob(to_parse), key=helpers.get_str_num)
+    if not pathlist:
+        assert(False and "check provided arch/model names are correct and directory structure")
+        
+    layer_ids = [int(str(path).split('layer')[1].split('.')[0])-1 for path in pathlist]
     
-    all_loops = []
-    all_divs = []
-    all_names = []
+    all_loops = {}
+    all_divs = {}
+    all_names = {}
     # loop through all files in dir provided
-    for f in pathlist:
+    for i in range(len(pathlist)):
         # get data for the file and add to lists
+        f = pathlist[i]
+        layer_id = layer_ids[i]
         loops, divs, names = parse_map(f)
-        all_loops.append(loops)
-        all_divs.append(divs)
-        all_names.append(names)
+        all_loops[layer_id] = loops
+        all_divs[layer_id] = divs
+        all_names[layer_id] = names
     
     if debug:
         for i in range(len(all_loops)):

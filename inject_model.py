@@ -5,15 +5,15 @@ import copy
 import bitflip
 from helpers import *
 
-# object to inject into a single conv layer
-class InjectConvLayer(nn.Module):
-    def __init__(self, model: nn.Module, conv_id, inj_loc='i'):
+# object to inject into a single layer
+class InjectModel(nn.Module):
+    def __init__(self, model: nn.Module, layer_id, inj_loc='i'):
         super().__init__()
         
         # initialize all params
-        self.conv_id = conv_id
-        self.model = model
-        self.conv = 0
+        self.layer_id = layer_id        # id of the layer to be injected into
+        self.model = model              # holds a copy of the model 
+        self.layer = 0                  # holds a copy of the layer
         self.sites = 0
         self.outputs = []
         self.inj_coord = 0
@@ -25,25 +25,42 @@ class InjectConvLayer(nn.Module):
         self.max_vals = []
         self.min_vals = []
         self.range_max = False
-        self.conv_ind = 0
+        self.layer_ind = 0
         self.all_outs = False
+        self.out_max = 0
+        self.out_min = 0
+        self.is_FC = False
+        self.FC_size = -1
         
         # set what type of injection based on user input
         self.inj_loc = inj_loc
 
         # register a hook for each layer
         with torch.no_grad():
-            num_conv = 0
+            num_layer = 0
             for layer in self.model.modules():
-                if isinstance(layer, nn.Conv2d):
-                    if num_conv == conv_id:
-                        self.conv = copy.deepcopy(layer)
-                        self.conv.weight.requires_grad = False
+                if isinstance(layer, (nn.Conv2d, nn.Linear)):
+                    if num_layer == layer_id:
+                        if isinstance(layer, (nn.Linear)):
+                            self.is_FC = True
+                        self.layer = copy.deepcopy(layer)
+                        self.layer.weight.requires_grad = False
                         layer.register_forward_hook(self.inject)
                     else:
                         layer.register_forward_hook(self.compare)
-                    num_conv += 1
-            self.num_conv = num_conv
+                    num_layer += 1
+            self.num_layer = num_layer
+            
+    def get_is_FC(self):
+        return self.is_FC
+    
+    def set_FC_size(self, FC_size):
+        assert(self.is_FC)
+        self.FC_size = FC_size
+        
+    def get_FC_size(self):
+        assert(self.is_FC)
+        return self.FC_size
     
     # set the maximum value for ranging
     # if max_vals == -1, this disables ranging
@@ -55,19 +72,20 @@ class InjectConvLayer(nn.Module):
             self.range_max = False
             return
         
-        # set it - and indicate using ranger
-        if not self.min_vals:
+        # set range maxing on - and then set the right values
+        self.range_max = True
+        if not min_vals:
             self.max_vals = max_vals
-            self.min_vals = [None]*self.num_conv
-        elif not self.max_vals:
+            self.min_vals = [None]*self.num_layer
+        elif not max_vals:
             self.min_vals = min_vals
-            self.max_vals = [None]*self.num_conv
+            self.max_vals = [None]*self.num_layer
         else:
             self.min_vals = min_vals
             self.max_vals = max_vals
-            self.range_max = True
-        assert(len(self.min_vals) == self.num_conv)
-        assert(len(self.max_vals) == self.num_conv)
+        # make sure that there's a max/min value for each layer
+        assert(len(self.min_vals) == self.num_layer)
+        assert(len(self.max_vals) == self.num_layer)
     
     # a hook function that will perform HW injection (given some SW error model)
     def inject(self, module, input_value, output):
@@ -99,33 +117,27 @@ class InjectConvLayer(nn.Module):
             else:
                 assert(False)
             # record changed value
-            self.post_value = inject_val
+            self.post_value = inject_val.detach().clone()
             
             # inject the new value into the input
             input_tensor[0][self.inj_coord] = inject_val
         
         # 2 ===========
-        faulty_output = self.conv(input_tensor)
+        faulty_output = self.layer(input_tensor)
         
         # 3 =========== 
         # if the list of sites is not empty
         if self.sites:
             for site in self.sites:
-                ind = (0, site[0], site[1], site[2])
-                try:
-                    output[ind] = faulty_output[ind]
-                except:
-                    print(ind)
-                    print(self.inj_coord)
-                    assert(False)
+                output[0][site] = faulty_output[0][site]
         else:
             # if empty list is given - then just directly copy (don't pick any sites)
             output.copy_(faulty_output)
         
         # 4 ===========
         if self.range_max:
-            max_val = self.max_vals[self.conv_id]
-            min_val = self.min_vals[self.conv_id]
+            max_val = self.max_vals[self.layer_id]
+            min_val = self.min_vals[self.layer_id]
             
             # uncomment below for clamp checking
             # clamped_output = torch.clamp(output, min=min_val, max=max_val)
@@ -136,29 +148,33 @@ class InjectConvLayer(nn.Module):
             # assert(False)
             
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
+        
+        # add the resulting max and min, to see if the clamp worked, for debugging purposes
+        self.max = torch.max(output).item()
+        self.min = torch.min(output).item()
             
         # 5 ===========
-        if self.conv_ind == self.conv_id or self.all_outs:
+        if self.layer_ind == self.layer_id or self.all_outs:
             self.outputs.append(copy.deepcopy(output))
         else:
             self.outputs.append(None)
         
-        self.conv_ind += 1
+        self.layer_ind += 1
     
     # hook function for layers not being injected into
     # this for: 1) doing ranging, 2) for data collection
     def compare(self, module, input_value, output):
         if self.range_max:
-            max_val = self.max_vals[self.conv_ind]
-            min_val = self.min_vals[self.conv_ind]
+            max_val = self.max_vals[self.layer_ind]
+            min_val = self.min_vals[self.layer_ind]
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
             
-        if self.conv_ind == self.conv_id or self.all_outs:
+        if self.layer_ind == self.layer_id or self.all_outs:
             self.outputs.append(copy.deepcopy(output))
         else:
             self.outputs.append(None)
             
-        self.conv_ind += 1
+        self.layer_ind += 1
     
     # set the mode of 
     def set_mode(self, mode, change_to=1000., bit=-1):
@@ -167,7 +183,7 @@ class InjectConvLayer(nn.Module):
             self.bit = bit
             self.mode = 0
         elif mode == "rand_bit":
-            assert(False and "not implemented")
+            assert(False and "not implemented/deprecated - use bit mode with a range instead")
             self.mode = 1
         elif mode == "change_to":
             self.mode = 2
@@ -187,11 +203,13 @@ class InjectConvLayer(nn.Module):
     def get_outputs(self):
         return self.outputs
 
-    def get_output(self, conv_id=-1):
-        if conv_id == -1:
-            conv_id = self.conv_id
-        return self.outputs[conv_id]
+    def get_output(self, layer_id=-1):
+        if layer_id == -1:
+            layer_id = self.layer_id
+        return self.outputs[layer_id]
     
+    # called before each hook call
+    # only reset values for things that change between injection calls
     def reset(self):
         if self.inj_loc == 'w' and not self.pre_value == []:
             self.reset_weight()
@@ -203,13 +221,15 @@ class InjectConvLayer(nn.Module):
         self.mode = -1
         self.bit = -1
         self.change_to = 1000.
-        self.conv_ind = 0
+        self.layer_ind = 0
+        self.out_max = 0
+        self.out_min = 0
         
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
     
     def reset_weight(self):
-        self.conv.weight[self.inj_coord] = self.pre_value
+        self.layer.weight[self.inj_coord] = self.pre_value
     
     # inject into a weight offline - so not as part of the hook function
     def inject_weight(self, inj_coord):
@@ -222,8 +242,7 @@ class InjectConvLayer(nn.Module):
         self.inj_coord = inj_coord
         with torch.no_grad():
             # get the clean value
-            inject_val = self.conv.weight[self.inj_coord]
-            # print("inject val: " + str(inject_val))
+            inject_val = self.layer.weight[self.inj_coord]
             self.pre_value = inject_val.detach().clone()
             
             # get the new injected value depending on mode
@@ -238,13 +257,34 @@ class InjectConvLayer(nn.Module):
             self.post_value = inject_val
             
             # replace value within the weights
-            self.conv.weight[self.inj_coord] = inject_val
+            self.layer.weight[self.inj_coord] = inject_val
     
     def get_weight(self):
-        return self.conv.weight.detach().clone()
+        return self.layer.weight.detach().clone()
     
     def run_hook(self, test_img, inj_coord, sites, mode="change_to", change_to=1000., bit=-1):
         self.reset()
+        if not self.is_FC:
+            # make sure the output indices have right dim
+            if sites:
+                assert(len(sites[0]) == 3)
+            # make sure inj_coord has right dim
+            if self.inj_loc == 'i':
+                assert(len(inj_coord) == 3)
+            elif self.inj_loc == 'w':
+                assert(len(inj_coord) == 4)
+        else:
+            assert(self.FC_size != -1)
+            out_in_size = self.FC_size - 1
+            # make sure the output indices have right dim
+            if sites:
+                assert(len(sites[0]) == out_in_size)
+            # make sure inj_coord has right dim
+            if self.inj_loc == 'i':
+                assert(len(inj_coord) == out_in_size)
+            elif self.inj_loc == 'w':
+                assert(len(inj_coord) == 2)
+            
         self.inj_coord = inj_coord
         self.set_sites(sites)
         self.set_mode(mode, change_to, bit)
@@ -256,3 +296,6 @@ class InjectConvLayer(nn.Module):
             out = self.forward(test_img)
 
         return (out, self.pre_value.item(), self.post_value.item())
+    
+    def get_maxmin(self):
+        return self.max, self.min

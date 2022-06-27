@@ -146,3 +146,5 @@ random*.py
 
 # Scalene
 profile.json
+
+timeloop-injection/

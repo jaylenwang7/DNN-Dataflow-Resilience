@@ -15,19 +15,24 @@ class Plotter():
         self.layers = layers
         self.net_name = net_name
         self.filenames = []
-        self.d_type = ''
+        self.d_type = d_type
+        self.add_on = add_on
         if d_type == 'i':
             self.d_type_name = 'inputs'
         elif d_type == 'w':
             self.d_type_name = 'weights'
         if not self.layers:
             self.get_layers()
+        else:
+            self.layers.sort()
         self.set_filenames(add_on)
         
     def get_layers(self):
         layers = [os.path.basename(os.path.normpath(f.path)) for f in os.scandir("data_results/" + self.arch_name + "/" + self.net_name + "/") if f.is_dir()]
         layers = [get_str_num(layer) for layer in layers]
-        self.layers = [layer for layer in layers if layer != None]
+        layers = [layer for layer in layers if layer != None]
+        layers.sort()
+        self.layers = layers
 
     def set_filenames(self, add_on=''):
         top_dir = "data_results/" + self.arch_name + "/" + self.net_name
@@ -35,7 +40,7 @@ class Plotter():
         # get the filenames for each layer
         for i in self.layers:
             # create the nested directories
-            dir = top_dir + "/conv" + str(i) + "/"
+            dir = top_dir + "/layer" + str(i) + "/"
             filename = dir + "data_" + self.d_type_name
             if add_on:
                 filename += add_on
@@ -54,7 +59,7 @@ class Plotter():
         group = df.groupby([axis_title])
         
         # get the aggregate statistics wanted (mean, stddev)
-        data2collect = ["CorrectClassConf"]
+        data2collect = ["CorrectClassConf", "XEntropy", "NumSites"]
         data_mean = group[data2collect].mean()
         data_mean = data_mean.add_suffix("_mean")
         data_std = group[data2collect].std()
@@ -66,6 +71,7 @@ class Plotter():
         error_rate = group["ClassifiedCorrect"].sum() / num_samples
         error_rate.name = "Error Rate"
         num_samples.name = "Num Samples"
+        
         data = data.join(error_rate)
         data = data.join(num_samples)
         
@@ -88,17 +94,45 @@ class Plotter():
                 tots[i] += zero_tuple[i][1]
 
         # aggregate the data
-        return (zeros[0]/tots[0], zeros[1]/tots[1], zeros[2]/tots[2])
+        return zeros, tots, len(data_zeros)
     
-    def collect_zero_data(self):
-        out_data = [[] for i in range(3)]
+    def collect_zero_data(self, input_only=False, nonzeros=True):
+        if input_only:
+            out_data = []
+            out_tots = []
+        else:
+            out_data = [[] for i in range(3)]
+            out_tots = [[] for i in range(3)]
+        out_nums = []
+        
+        # for each layer
         for i in range(len(self.layers)):
+            # read out the data - comes in form (output, input, weight) for each as totals
             df = pd.read_csv(self.filenames[i])
-            zero_data = self.get_zero_data(df)
-            for i in range(3):
-                out_data[i].append(zero_data[i])
+            zeros, tots, num = self.get_zero_data(df)
             
-        return out_data
+            # append the total number of samples taken (num is just a single int)
+            out_nums.append(num)
+            
+            # this is the ratio of values that are zero, so zero_ratio is len=3
+            zero_ratio = []
+            for i in range(len(zeros)):
+                zero_ratio.append(zeros[i]/tots[i])
+            
+            # if you want portion that are nonzero then get that
+            if not nonzeros:
+                zero_ratio = [1.0 - z for z in zero_ratio]
+            
+            # place data in out lists
+            if input_only:
+                out_data.append(zero_ratio[1])
+                out_tots.append(tots[1])
+            else: 
+                for i in range(3):
+                    out_data[i].append(zero_ratio[i])
+                    out_tots[i].append(tots[i])
+            
+        return out_data, out_tots, out_nums
 
     # collect necessary data along an axis of the collected data
     # given by axis_title - for the layer conv_id
@@ -129,7 +163,7 @@ class Plotter():
         fig.legend(labels=["Outputs", "Inputs", "Weights"],
                    loc="right")
         
-        img_name = get_new_filename(self.img_dir + "zeros", "png")
+        img_name, _ = get_new_filename(self.img_dir + "zeros", "png")
         plt.savefig(img_name)
 
     # plot the aggregated results of all the layers on the same plot
@@ -192,31 +226,128 @@ class Plotter():
         # if requested save img of plot in dir
         if img_name:
             # don't overwrite older image
-            img_name = get_new_filename(self.img_dir + img_name, "png")
+            img_name, _ = get_new_filename(self.img_dir + img_name, "png")
             plt.savefig(img_name)
         if show:
             plt.show()
             
-    def plot_v2(self, level_names=[]):
-        # plot on x axis the layers and on y axis the sparsity
-        fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
-        zero_data = self.collect_zero_data()
-        # plot for output, input, weight
+    def plot_v2(self, level_names=[], xentropy=False, sparsity=False, num_sites=False, overlay=True, sites_ratio=False, maxes_mins=[]):
+        # plot on x axis the layers and on y axis the correct rate
+        fig, axes = plt.subplots(figsize=(10, 8))
+        plot_maxes = bool(maxes_mins)
+        assert(sparsity + num_sites + plot_maxes + sites_ratio <= 1)
+        if sparsity or num_sites or plot_maxes or sites_ratio:
+            axes1 = axes.twinx()
+            
+        if plot_maxes:
+            new_maxes = []
+            new_mins = []
+            maxes = maxes_mins[0]
+            mins = maxes_mins[1]
+            for layer in self.layers:
+                new_maxes.append(maxes[layer])
+                new_mins.append(mins[layer])
+            maxes = new_maxes
+            mins = new_mins
+        
+        # get sparsity data - comes out as list of list of three values (output, input, weight)
+        # only really concerned with input - also all levels are the same
+        # NOTE: these numbers are aggregate not averaged for each data point
+        zeros, tots, nums = self.collect_zero_data(input_only=False, nonzeros=False)
+        input_zeros = zeros[1]
+        new_tots = []
+        for i in range(len(self.layers)):
+            new_tots.append(tots[0][i]/
+                            nums[i])
+        tots = new_tots
+        
+        # get the number of levels
         level_data = self.collect_layer_data(0, "Level")
         nlevels = len(level_data['Error Rate'].tolist())
-        all_levels = [[] for i in range(nlevels)]
+        
+        # loop through each level and get the data for each level
+        all_error = [[] for i in range(nlevels)]
+        all_xentropy = [[] for i in range(nlevels)]
+        all_numsites = [[] for i in range(nlevels)]
         for i in range(len(self.layers)):
+            # get a table with the data for each level
             level_data = self.collect_layer_data(i, "Level")
-            level_data = level_data['Error Rate'].tolist()
+            # display(level_data)
+            
+            # extract a column of the data and turn into a list, with data for each level
+            error_data = level_data['Error Rate'].tolist()
+            xentropy_data = level_data['XEntropy_mean'].tolist()
+            numsites_data = level_data['NumSites_mean'].tolist()
+            
+            # transfer the data in the list to an aggregate list
             for j in range(nlevels):
-                all_levels[j].append(level_data[j])
+                all_error[j].append(error_data[j])
+                all_xentropy[j].append(xentropy_data[j])
+                all_numsites[j].append(numsites_data[j])  
         
         for i in range(nlevels):
-            ax = plt.plot(self.layers, all_levels[i])
+            if not xentropy:
+                axes.plot(self.layers, all_error[i])
+            else:
+                axes.plot(self.layers, all_xentropy[i])
+                
+        cmap = plt.get_cmap('tab10')
+                
+        if sparsity:
+            spars_color = "tab:brown"
+            spars_linestyle = "--"
+            axes1.set_ylabel("Perc. of inputs zero", color=spars_color)
+            axes1.plot(self.layers, input_zeros, color=spars_color, linestyle=spars_linestyle)
+            axes1.tick_params(axis='y', labelcolor=spars_color)
+        elif sites_ratio:
+            linestyle = "--"
+            for i in range(nlevels):
+                site_rat = []
+                for j in range(len(self.layers)):
+                    site_rat.append(all_numsites[i][j]/tots[j])
+                axes1.plot(self.layers, site_rat, linestyle=linestyle)
+            axes1.set_ylabel("Ratio of sites/total elements")
+        elif num_sites:
+            linestyle = "--"
+            axes1.set_ylabel("Mean number of reuse sites")
+            for i in range(nlevels):
+                color = cmap(i)
+                axes1.plot(self.layers, all_numsites[i], color=color, linestyle=linestyle)
+        elif plot_maxes:
+            max_linestyle = "--"
+            min_linestyle = ":"
+            color = "k"
+            axes1.set_ylabel("Range of output values of layer")
+            axes1.plot(self.layers, maxes, color=color, linestyle=max_linestyle)
+            axes1.plot(self.layers, mins, color=color, linestyle=min_linestyle)
             
-        fig.legend(labels=level_names,
-                    loc="right")
+        fig.legend(labels=level_names)
         axes.xaxis.set_major_locator(MaxNLocator(integer=True))
         
-        img_name = get_new_filename(self.img_dir + "layers", "png")
+        # set axis titles
+        fontsize = 14
+        axes.set_xlabel("Layer number", fontsize=fontsize)
+        if not xentropy:
+            axes.set_ylabel("Mean Top-1 Accuracy", fontsize=fontsize)
+        else:
+            axes.set_ylabel("Mean XEntropy", fontsize=fontsize)
+        
+        title = self.net_name + " on " + self.arch_name + " " + self.d_type_name
+        axes.set_title(title)
+        
+        # save the figure to a png file in the `plots` directory
+        target_name = self.img_dir + "layers_" + self.d_type + self.add_on
+        if xentropy:
+            target_name += "_x"
+            
+        if sparsity:
+            target_name += "_sp"
+        elif sites_ratio:
+            target_name += "_srat"
+        elif num_sites:
+            target_name += "_ns"
+        elif plot_maxes:
+            target_name += "_max"
+        img_name, _ = get_new_filename(target_name, "png")
+        print("Creating plot at: " + str(img_name))
         plt.savefig(img_name)

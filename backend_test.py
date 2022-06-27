@@ -536,6 +536,35 @@ def test_weight1_stride2(spatial=True):
     inj_site = (0, 4, 0)
     strides = [2, 2]
     run_test(vars, mem_dividers, inj_site, 'test_weight1_stride2', spatial, 'i', strides)
+    
+def test_FC(spatial=True):
+    vars = [('c', 8), ('m', 125), ('c', 16, True), ('q', 1), ('m', 4, True), ('q', 1), ('m', 2), ('c', 4, True), ('q', 1)]
+    d_type = 'w'
+    if d_type == 'i':
+        mem_dividers = [0, 1, 3]
+        # C H W - H=0, W=0
+        inj_site = (40, 0, 0)
+    else:
+        mem_dividers = [0, 5, 8]
+        # M C S R - R=0, S=0
+        inj_site = (900, 50, 0, 0)
+    strides = (1, 1)
+    run_test(vars, mem_dividers, inj_site, 'test_FC', spatial, d_type, strides)
+    
+def test_twodim_FC(spatial=True):
+    vars = [('m', 16), ('c', 8), ('p', 197), ('m', 12, True), ('q', 1), ('c', 12, True), ('q', 1), ('c', 8), ('m', 12)]
+    d_type = 'w'
+    if d_type == 'i':
+        mem_dividers = [0, 2, 6]
+        # C H W - H=0, W=0
+        inj_site = (100, 0, 40)
+    else:
+        mem_dividers = [0, 7]
+        # M C S R - R=0, S=0
+        inj_site = (400, 50, 0, 0)
+    strides = (1, 1)
+    run_test(vars, mem_dividers, inj_site, 'test_twodim_FC', spatial, d_type, strides)
+    
 
 if __name__=="__main__":
 
@@ -557,7 +586,9 @@ if __name__=="__main__":
     # test_eyeriss_resnet18_6()
     # test_eyeriss_resnet18_7()
     
-    test_weight1_stride2()
+    # test_weight1_stride2()
+    # test_FC()
+    test_twodim_FC()
     
     # test_spatial_q()
     pass
