@@ -44,11 +44,11 @@ class Loop():
         # these objects are shared between different levels of the same var (x0, x1, x2, ...)
         input_vars = 0
         # also process with spatials for output injection
-        if not self.WITH_SPATIAL and not d_type == 'o' and not self.SERIAL:
-            input_vars = self.preprocess_input_vars(input_vars_in)
-        # run this if output injection
-        else:
-            input_vars = self.preprocess_input_vars_w_spatial(input_vars_in)
+        # if not self.WITH_SPATIAL and not d_type == 'o' and not self.SERIAL:
+        input_vars = self.preprocess_input_vars(input_vars_in)
+        # run this if output injection - since can just run the spatials sequentially
+        # else:
+        #     input_vars = self.preprocess_input_vars_w_spatial(input_vars_in)
         
         self.mem_inds = []
         for mem_div in mem_dividers:
@@ -766,7 +766,7 @@ class Loop():
             return self.get_input_coord() == (self.inj_ind[1], self.inj_ind[2])
         elif self.d_type == 'w':
             return self.get_weight_coord() == self.inj_ind
-        else:
+        else: # d_type is 'o'
             return self.get_output_coord() == self.inj_ind
 
     # transform to given user injection index into what can be used internally
@@ -1006,7 +1006,6 @@ class Loop():
             for i in range(self.get_curr_const()):
                 # compare the current index to the injection index
                 if self.compare_inj():
-                    # print("MATCH")
                     # if it's a match - inc divider
                     self.curr_divider += 1
                     # mark this new divider as not being added yet
@@ -1015,6 +1014,7 @@ class Loop():
                     if self.first:
                         if self.d_type in ['i', 'w']:
                             self.out_set.append(self.get_output_coord())
+                        # if output injection - then you need the weight sites
                         else:
                             self.out_set.append(self.get_full_weight_coord())
 
@@ -1055,7 +1055,8 @@ class Loop():
     
     def insert_spatial(self):
         timed_sites = self.get_all_timed_sites()
-        if self.WITH_SPATIAL:
+        # if output injection - don't need to expand spatially
+        if self.WITH_SPATIAL or self.d_type == 'o':
             return timed_sites
         
         # timed_sites[i][j][k]

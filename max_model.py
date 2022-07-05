@@ -48,7 +48,7 @@ class MaxModel(nn.Module):
     def get_avg_stds(self):
         return [sum(stds) / len(stds) for stds in self.stds]
 
-def get_range(net_max, dataset, n=1000):
+def get_range(net_max, dataset, n=1000, stds=False):
     # get a MaxModel object to use
     net_max.eval()
     new_net_max = MaxModel(net_max)
@@ -62,13 +62,18 @@ def get_range(net_max, dataset, n=1000):
         img = torch.unsqueeze(dataset[sample_inds[i]]['image'], 0)
         new_net_max(img)
         new_net_max.reset_conv_id()
+        
+    if stds:
+        return new_net_max.get_maxes(), new_net_max.get_mins(), new_net_max.get_avg_stds()
+    else:
+        return new_net_max.get_maxes(), new_net_max.get_mins()
 
-    return new_net_max.get_maxes(), new_net_max.get_mins()
-
-def get_range_img(net_max, img):
+def get_range_img(net_max, img, stds=False):
     net_max.eval()
     new_net_max = MaxModel(net_max)
     img = torch.unsqueeze(img, 0)
     new_net_max(img)
-    
-    return new_net_max.get_maxes(), new_net_max.get_mins()
+    if stds:
+        return new_net_max.get_maxes(), new_net_max.get_mins(), new_net_max.get_avg_stds()
+    else:
+        return new_net_max.get_maxes(), new_net_max.get_mins()

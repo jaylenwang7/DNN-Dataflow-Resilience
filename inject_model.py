@@ -7,7 +7,7 @@ from helpers import *
 
 # object to inject into a single layer
 class InjectModel(nn.Module):
-    def __init__(self, model: nn.Module, layer_id, inj_loc='i'):
+    def __init__(self, model: nn.Module, layer_id, d_type='i'):
         super().__init__()
         
         # initialize all params
@@ -33,7 +33,7 @@ class InjectModel(nn.Module):
         self.FC_size = -1
         
         # set what type of injection based on user input
-        self.inj_loc = inj_loc
+        self.set_d_type(d_type)
 
         # register a hook for each layer
         with torch.no_grad():
@@ -86,6 +86,23 @@ class InjectModel(nn.Module):
         # make sure that there's a max/min value for each layer
         assert(len(self.min_vals) == self.num_layer)
         assert(len(self.max_vals) == self.num_layer)
+        
+    def bitflip_value(self, value):
+        # for data recording purposes - keep the original value
+        self.pre_value = value.detach().clone()
+        
+        # change the value depending on the mode
+        if self.mode == 0:
+            value = bitflip.flip_bit(value, self.bit)
+        elif self.mode == 1:
+            value = bitflip.flip_random_bit(value)
+        elif self.mode == 2:
+            value = torch.as_tensor(self.change_to)
+        else:
+            assert(False)
+        # record changed value
+        self.post_value = value.detach().clone()
+        return value
     
     # a hook function that will perform HW injection (given some SW error model)
     def inject(self, module, input_value, output):
@@ -100,39 +117,42 @@ class InjectModel(nn.Module):
         input_tensor = input_value[0].clone().detach()
         
         # if injecting into input - need to do this online during the hook
-        if self.inj_loc == 'i':
-            inject_val = 0
+        if self.d_type == 'i':
             inject_val = input_tensor[0][self.inj_coord]
             
-            # for data recording purposes - get the original value
-            self.pre_value = inject_val.detach().clone()
+            # # for data recording purposes - get the original value
+            # self.pre_value = inject_val.detach().clone()
             
-            # change the value depending on the mode
-            if self.mode == 0:
-                inject_val = bitflip.flip_bit(inject_val, self.bit)
-            elif self.mode == 1:
-                inject_val = bitflip.flip_random_bit(inject_val)
-            elif self.mode == 2:
-                inject_val = torch.as_tensor(self.change_to)
-            else:
-                assert(False)
-            # record changed value
-            self.post_value = inject_val.detach().clone()
+            # # change the value depending on the mode
+            # if self.mode == 0:
+            #     inject_val = bitflip.flip_bit(inject_val, self.bit)
+            # elif self.mode == 1:
+            #     inject_val = bitflip.flip_random_bit(inject_val)
+            # elif self.mode == 2:
+            #     inject_val = torch.as_tensor(self.change_to)
+            # else:
+            #     assert(False)
+            # # record changed value
+            # self.post_value = inject_val.detach().clone()
             
             # inject the new value into the input
-            input_tensor[0][self.inj_coord] = inject_val
+            input_tensor[0][self.inj_coord] = self.bitflip_value(inject_val)
         
-        # 2 ===========
-        faulty_output = self.layer(input_tensor)
-        
-        # 3 =========== 
-        # if the list of sites is not empty
-        if self.sites:
-            for site in self.sites:
-                output[0][site] = faulty_output[0][site]
+        if self.d_type != 'o':
+            # 2 ===========
+            faulty_output = self.layer(input_tensor)
+            
+            # 3 =========== 
+            # if the list of sites is not empty
+            if self.sites:
+                for site in self.sites:
+                    output[0][site] = faulty_output[0][site]
+            else:
+                # if empty list is given - then just directly copy (don't pick any sites)
+                output.copy_(faulty_output)
         else:
-            # if empty list is given - then just directly copy (don't pick any sites)
-            output.copy_(faulty_output)
+            inject_val = output[0][self.inj_coord]
+            output[0][self.inj_coord] = self.bitflip_value(inject_val)
         
         # 4 ===========
         if self.range_max:
@@ -191,11 +211,9 @@ class InjectModel(nn.Module):
         else:
             assert(False)
             
-    def set_loc(self, loc):
-        assert(loc in ['i', 'w', 'o'])
-        if self.inj_loc == 'w' and not self.pre_value == []:
-            self.reset_weight()
-        self.inj_loc = loc
+    def set_d_type(self, d_type):
+        assert(d_type in ['i', 'w', 'o'])
+        self.d_type = d_type
             
     def set_sites(self, sites):
         self.sites = sites
@@ -211,7 +229,7 @@ class InjectModel(nn.Module):
     # called before each hook call
     # only reset values for things that change between injection calls
     def reset(self):
-        if self.inj_loc == 'w' and not self.pre_value == []:
+        if self.d_type == 'w' and not self.pre_value == []:
             self.reset_weight()
         self.outputs = []
         self.pre_value = []
@@ -233,7 +251,7 @@ class InjectModel(nn.Module):
     
     # inject into a weight offline - so not as part of the hook function
     def inject_weight(self, inj_coord):
-        assert(self.inj_loc == 'w')
+        assert(self.d_type == 'w')
         # if the weight has been injected, reset the weights to the original value
         if not self.pre_value == []:
             self.reset_weight()
@@ -243,21 +261,21 @@ class InjectModel(nn.Module):
         with torch.no_grad():
             # get the clean value
             inject_val = self.layer.weight[self.inj_coord]
-            self.pre_value = inject_val.detach().clone()
+            # self.pre_value = inject_val.detach().clone()
             
-            # get the new injected value depending on mode
-            if self.mode == 0:
-                inject_val = bitflip.flip_bit(inject_val, self.bit)
-            elif self.mode == 1:
-                inject_val = bitflip.flip_bit(inject_val)
-            elif self.mode == 2:
-                inject_val = torch.as_tensor(self.change_to)
-            else:
-                assert(False)
-            self.post_value = inject_val
+            # # get the new injected value depending on mode
+            # if self.mode == 0:
+            #     inject_val = bitflip.flip_bit(inject_val, self.bit)
+            # elif self.mode == 1:
+            #     inject_val = bitflip.flip_bit(inject_val)
+            # elif self.mode == 2:
+            #     inject_val = torch.as_tensor(self.change_to)
+            # else:
+            #     assert(False)
+            # self.post_value = inject_val
             
             # replace value within the weights
-            self.layer.weight[self.inj_coord] = inject_val
+            self.layer.weight[self.inj_coord] = self.bitflip_value(inject_val)
     
     def get_weight(self):
         return self.layer.weight.detach().clone()
@@ -266,30 +284,34 @@ class InjectModel(nn.Module):
         self.reset()
         if not self.is_FC:
             # make sure the output indices have right dim
-            if sites:
+            if sites and self.d_type != 'o':
                 assert(len(sites[0]) == 3)
             # make sure inj_coord has right dim
-            if self.inj_loc == 'i':
+            if self.d_type == 'i':
                 assert(len(inj_coord) == 3)
-            elif self.inj_loc == 'w':
+            elif self.d_type == 'w':
                 assert(len(inj_coord) == 4)
+            else:
+                assert(len(inj_coord) == 3)
         else:
             assert(self.FC_size != -1)
             out_in_size = self.FC_size - 1
             # make sure the output indices have right dim
-            if sites:
+            if sites and self.d_type != 'o':
                 assert(len(sites[0]) == out_in_size)
             # make sure inj_coord has right dim
-            if self.inj_loc == 'i':
+            if self.d_type == 'i':
                 assert(len(inj_coord) == out_in_size)
-            elif self.inj_loc == 'w':
+            elif self.d_type == 'w':
                 assert(len(inj_coord) == 2)
+            else:
+                assert(len(inj_coord) == out_in_size)
             
         self.inj_coord = inj_coord
         self.set_sites(sites)
         self.set_mode(mode, change_to, bit)
         
-        if self.inj_loc == 'w':
+        if self.d_type == 'w':
             self.inject_weight(self.inj_coord)
             
         with torch.no_grad():

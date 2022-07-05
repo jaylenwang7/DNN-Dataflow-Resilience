@@ -149,8 +149,11 @@ def get_loops(get_net, dir, sizes, paddings, strides, to_parse='**/*.map.txt', d
             continue
         
         # create the loop using the layer_id
+        div = divs[layer_id][d_type]
+        if d_type == 'o':
+            div = [0]
         new_loop = Loop(loops[layer_id], 
-                        divs[layer_id][d_type], 
+                        div, 
                         d_type=d_type, 
                         input_strides=strides[i], 
                         sizes=sizes[i], 

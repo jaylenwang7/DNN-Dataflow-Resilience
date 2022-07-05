@@ -1,16 +1,9 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from torchvision import transforms
 import torch
 from PIL import Image
 import os
 import pandas as pd
-
-def get_classes(filename='/ImageNet/imagenet_classes_init.txt'):
-    classes = []
-    with open(filename) as f:
-        classes = [line.strip() for line in f.readlines()]
-
-    return classes
 
 class ImagenetValidationDataset(Dataset):
 

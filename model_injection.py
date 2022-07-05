@@ -9,7 +9,6 @@ from pathlib import Path
 from inject_model import InjectModel
 from info_model import *
 from max_model import *
-import logging
 
 # class for an object that is used to inject into a model (for all the layers of the model)
 class ModelInjection():
@@ -128,7 +127,7 @@ class ModelInjection():
         # open a log file
         p = Path(self.top_dir)
         p.mkdir(parents=True, exist_ok=True)
-        log_filename = self.top_dir + "/" + "log.txt"
+        log_filename = self.top_dir + "/log.txt"
         self.log_file = log_filename
         if not exists(self.log_file) or self.overwrite:
             open(self.log_file, 'w', newline='')
@@ -153,7 +152,7 @@ class ModelInjection():
         for i in range(self.num_layers):
             # get the model and get the layer injection object
             net_inj = self.get_net()
-            inject_layer = InjectModel(net_inj, i, inj_loc=self.d_type)
+            inject_layer = InjectModel(net_inj, i, d_type=self.d_type)
             # if this layer is FC, set its size
             if self.FC_sizes[i] != -1:
                 inject_layer.set_FC_size(self.FC_sizes[i])
@@ -171,9 +170,13 @@ class ModelInjection():
         assert(d_type in self.d_types)
         self.d_type = d_type
         if d_type == 'i':
-            self.d_type_name = 'inputs'
+            self.d_type_name = "inputs"
         elif d_type == 'w':
-            self.d_type_name = 'weights'
+            self.d_type_name = "weights"
+        elif d_type == 'o':
+            self.d_type_name = "outputs"
+        else:
+            assert(False and "Invalid dtype")
 
     # returns the current path to the filename - constructed from class parameters
     def get_filename(self, layer_id):
@@ -190,7 +193,9 @@ class ModelInjection():
         self.FC_sizes = FC_sizes
 
     def check_sites(self, sites, layer_id, inj_ind):
+        # order: m c s r q p h w
         layer_size = self.layer_sizes[layer_id]
+        m, c, s, r, q, p, h, w = layer_size
         if self.d_type == 'i':
             # W = weight kernel size
             # S = stride
@@ -227,33 +232,30 @@ class ModelInjection():
                 return out_range
 
             strides = self.strides[layer_id]
-            m = layer_size[0]
-            h = layer_size[6]
-            w = layer_size[7]
-            s = layer_size[2]
-            r = layer_size[3]
 
             y_range = get_input_window(s, strides[0], inj_ind[1], h)
             x_range = get_input_window(r, strides[1], inj_ind[2], w)
             ranges = (range(m), y_range, x_range)
-            for site in sites:
-                is_in = site[0] in ranges[0] and site[1] in ranges[1] and site[2] in ranges[2] 
-                if not is_in:
-                    print(site)
-                    print(ranges)
-                    assert(False)
 
         elif self.d_type == 'w':
-            m = inj_ind[0]
-            q = layer_size[4]
-            p = layer_size[5]
-            ranges = (range(m, m+1), range(q), range(p))
-            for site in sites:
-                is_in = site[0] in ranges[0] and site[1] in ranges[1] and site[2] in ranges[2] 
-                if not is_in:
-                    print(site)
-                    print(ranges)
-                    assert(False)
+            m_i = inj_ind[0]
+            ranges = (range(m_i, m_i+1), range(q), range(p))
+        else: # for outputs, the sites are weights so
+            m_i = inj_ind[0]
+            ranges = (range(m_i, m_i+1), range(c), range(s), range(r))
+        
+        assert(len(sites[0]) == len(ranges))
+        for site in sites:
+            is_in = True
+            for i in range(len(site)):
+                if site[i] not in ranges[i]:
+                    is_in = False
+                    break
+            if not is_in:
+                print(site)
+                print(ranges)
+                assert(False)
+            
     
     # this should be deprecated - this was before spatials
     # use to insert 'm' channels into output sites (since weren't processed before)
@@ -322,12 +324,12 @@ class ModelInjection():
                 inj_ind = inj_inds[ind]
                 # reform injection index for FC, based on input or weight
                 if is_FC:
-                    if self.d_type == 'i':
+                    if self.d_type in ['i', 'o']:
                         if FC_size == 2:
                             inj_ind = (inj_ind[0],)
                         # TODO: not sure if this is generalizable beyond VIT
                         elif FC_size == 3:
-                            inj_ind = (get_nonzero_ind(inj_ind), inj_ind[0])
+                            inj_ind = (get_nonzero_ind(inj_ind, start_from=1), inj_ind[0])
                         else:
                             assert(False and "FC_size not supported")
                     elif self.d_type == 'w':
@@ -350,8 +352,10 @@ class ModelInjection():
                         set_sites = set(timed_site)
                         timed_site = list(set_sites)
                         num_sites = len(timed_site)
+                        if self.d_type == 'o':
+                            num_sites = 1
                         # if FC then change the output sites to have the right dims and order
-                        if is_FC:
+                        if is_FC and self.d_type != 'o':
                             # TODO: also not sure about generalizability of this
                             if FC_size == 2:
                                 timed_site = [(ts[0],) for ts in timed_site]
@@ -511,13 +515,14 @@ class ModelInjection():
     def get_rand(self, layer_ind, inj_inds=[], per_sample=4, num_injs=8):
         print("Get randing...")
         inject_loop = self.loops[layer_ind]
-        c_info = self.layer_sizes[layer_ind] # [m, c, s, r, q, p, h, w]
+        m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind] # [m, c, s, r, q, p, h, w]
         stride = self.strides[layer_ind]
         # need to use transformed sizes instead of the layer_sizes
         # actually want to use original size and then transform into transformed internally
         if self.d_type == 'w':
             # use first four indices: m, c, s, r
-            limits = [range(c_info[i]) for i in range(4)]
+            limits = [m, c, s, r]
+            limits = [range(l) for l in limits]
         elif self.d_type == 'i':
             # this is to handle cutting off on the end - when the weight/stride leads to weird end behavior
             def reduce_by_10(limits):
@@ -534,9 +539,11 @@ class ModelInjection():
                         new_limits.append(l)
                 return new_limits
             
-            #                      c          h          w
-            limits = reduce_by_10((c_info[1], c_info[6], c_info[7]))
-            limits = [limits[0], check_stride_width(limits[1], stride[0], c_info[2]), check_stride_width(limits[2], stride[1], c_info[3])]
+            limits = reduce_by_10((c, h, w))
+            limits = [limits[0], check_stride_width(limits[1], stride[0], s), check_stride_width(limits[2], stride[1], r)]
+        elif self.d_type == 'o':
+            limits = [m, q, p]
+            limits = [range(l) for l in limits]
         else:
             assert(False)
 
@@ -550,7 +557,7 @@ class ModelInjection():
             # only need to do this if injecting into inputs
             if self.d_type == 'i':
                 for inj in inj_inds:
-                    if not check_inj_ind(inj[1:], stride, (c_info[2], c_info[3])):
+                    if not check_inj_ind(inj[1:], stride, (s, r)):
                         raise Exception("Invalid injection given for the stride and weight size of the layer.")
         self.log(inj_inds)
         
@@ -576,20 +583,24 @@ class ModelInjection():
                 inj_ind[2] += self.paddings[layer_ind][1]
                 inj_ind = tuple(inj_ind)
             
-            # get all timed sites
-            inject_loop.inject_full(inj_ind)
-            timed_sites = inject_loop.insert_spatial()
-            # prune the sites to be within range
-            timed_sites = inject_loop.prune_sites(timed_sites)
-            # timed_sites[i][j][k]
-                # i = mem level
-                # j = discrete time groups (i.e. contains sets of sites created by considering time)
-                # k = possibilities within a time group
+            if self.d_type != 'o':
+                # get all timed sites
+                inject_loop.inject_full(inj_ind)
+                timed_sites = inject_loop.insert_spatial()
+                # prune the sites to be within range
+                timed_sites = inject_loop.prune_sites(timed_sites)
+                # timed_sites[i][j][k]
+                    # i = mem level
+                    # j = discrete time groups (i.e. contains sets of sites created by considering time)
+                    # k = possibilities within a time group
             
             # loop through the memory levels (given by a loop's mem_inds)
             for j in range(self.num_mem_levels):
-                # get this level's time groups
-                sites = timed_sites[j]
+                if self.d_type == 'o':
+                    sites = [[inj_ind]]
+                else:
+                    # get this level's time groups
+                    sites = timed_sites[j]
 
                 # loop through list of time groups
                 total_possible = 0

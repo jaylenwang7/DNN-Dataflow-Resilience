@@ -3,10 +3,10 @@ from helpers import *
 from info_model import *
 from loop import Loop
 from model_injection import ModelInjection
-from plotter import Plotter
+from plotter import Plotter, combine_plots
 from max_model import *
 from typing import Callable, List
-# from scalene import scalene_profiler
+
 
 IMAGENET_IMGS_PATH = '../loop-injection/ILSVRC2012_img_val/'
 IMAGENET_LABELS_PATH = '../loop-injection/LOC_val_solution.csv'
@@ -102,279 +102,226 @@ efficientnet_sample_layers = [0, 3, 5, 10, 13, 20, 30, 37, 46, 56, 60, 70, 80, 8
 vit_224_sample_layers = [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 48, 49]
 deit_tiny_sample_layers = vit_224_sample_layers
 
-def run_nvdla_inputs():
+
+def run_nvdla_alexnet(d_type:str, layers=[]):
     # get the dataset and network
-    dataset = get_dataset()
+    dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     
     num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_alexnet, dataset[0]['image'])
 
     # get the loop objects
     loops = []
+    mem_dividers = [0, 1, 10]
+    if d_type == 'o':
+        mem_dividers = [0]
 
-    # layer 1
-    # 1: [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
-    nvdla_vars_1 = [('m', 4), ('m', 16, True), ('c', 3), ('q', 11), ('p', 11), ('c', 1), 
-                    ('s', 11), ('r', 11), ('q', 5), ('p', 5), ('r', 1), ('s', 1)]
-    mem_dividers_1 = [0, 1, 10]
-    nvdla_injection_1 = Loop(nvdla_vars_1, mem_dividers_1, d_type='i', sizes=var_sizes[0], paddings=paddings[0], input_strides=[4, 4])
-    loops.append(nvdla_injection_1)
-
-    # layer 2
-    # 2: [(192, 64, 5, 5),     (1, 192, 27, 27),   (1, 64, 27, 27),    (2, 2),     (1, 1)]
-    nvdla_vars_2 = [('m', 12), ('m', 16, True), ('c', 64), ('q', 8), ('p', 8), ('c', 1), 
-                    ('s', 5), ('r', 5), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers_2 = [0, 1, 10]
-    nvdla_injection_2 = Loop(nvdla_vars_2, mem_dividers_2, d_type='i', sizes=var_sizes[1], paddings=paddings[1], input_strides=[1, 1])
-    loops.append(nvdla_injection_2)
-
-    # layer 3
-    # 3: [(384, 192, 3, 3),    (1, 384, 13, 13),   (1, 192, 13, 13),   (1, 1),     (1, 1)]
-    nvdla_vars_3 = [('m', 24), ('m', 16, True), ('c', 192), ('q', 4), ('p', 4), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers_3 = [0, 1, 10]
-    nvdla_injection_3 = Loop(nvdla_vars_3, mem_dividers_3, d_type='i', sizes=var_sizes[2], paddings=paddings[2], input_strides=[1, 1])
-    loops.append(nvdla_injection_3)
-
-    # layer 4
-    # 4: [(256, 384, 3, 3),    (1, 256, 13, 13),   (1, 384, 13, 13),   (1, 1),     (1, 1)]
-    nvdla_vars_4 = [('m', 16), ('m', 16, True), ('c', 384), ('q', 4), ('p', 4), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers_4 = [0, 1, 10]
-    nvdla_injection_4 = Loop(nvdla_vars_4, mem_dividers_4, d_type='i', sizes=var_sizes[3], paddings=paddings[3], input_strides=[1, 1])
-    loops.append(nvdla_injection_4)
-
-    # layer 5
-    # 5: [(256, 256, 3, 3),    (1, 256, 13, 13),   (1, 256, 13, 13),   (1, 1),     (1, 1)]
-    nvdla_vars_5 = [('m', 16), ('m', 16, True), ('c', 256), ('q', 4), ('p', 4), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers_5 = [0, 1, 10]
-    nvdla_injection_5 = Loop(nvdla_vars_5, mem_dividers_5, d_type='i', sizes=var_sizes[4], paddings=paddings[4], input_strides=[1, 1])
-    loops.append(nvdla_injection_5)
-
-    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, overwrite=False, debug=True)
-    correct_rate = mod_inj.full_inject(mode="bit", bit=5, img_inds=[], debug=True, inj_sites=[], layers=[])
-    return correct_rate
-
-def get_nvdla_loops(model_name:str, d_type:str):
-    # get the dataset and network
-    dataset = get_dataset()
+    nvdla_vars = [[('m', 4), ('m', 16, True), ('c', 3), ('q', 11), ('p', 11), ('c', 1), ('s', 11), ('r', 11), ('q', 5), ('p', 5), ('r', 1), ('s', 1)],
+                  [('m', 12), ('m', 16, True), ('c', 64), ('q', 8), ('p', 8), ('c', 1), ('s', 5), ('r', 5), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 24), ('m', 16, True), ('c', 192), ('q', 4), ('p', 4), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 384), ('q', 4), ('p', 4), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 256), ('q', 4), ('p', 4), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 256), ('m', 16, True), ('c', 256), ('q', 1), ('c', 32), ('s', 1), ('r', 1)],
+                  [('m', 256), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)],
+                  [('m', 64), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)]]
     
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_alexnet, dataset[0]['image'])
+    for i in range(num_layers):
+        if i in layers:
+            assert(i in range(nvdla_vars))
+            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
+            loops.append(nvdla_injection)
+        else:
+            loops.append(None)
+
+    debug = True
+    inj_inds = []
     
-    if model_name == "alexnet":
-        loops = []
-        nvdla_vars = []
-        # layer 1
-        # 1: [(64, 3, 11, 11),     (1, 64, 55, 55),    (1, 3, 224, 224),   (2, 2),     (4, 4)]
-        nvdla_vars_1 = [('m', 4), ('m', 16, True), ('c', 3), ('q', 11), ('p', 11), ('c', 1), 
-                        ('s', 11), ('r', 11), ('q', 5), ('p', 5), ('r', 1), ('s', 1)]
-        mem_dividers_1w = [0, 1, 10]
-        nvdla_injection_1 = Loop(nvdla_vars_1, mem_dividers_1w, d_type=d_type, sizes=var_sizes[0], paddings=paddings[0], input_strides=[4, 4])
-        loops.append(nvdla_injection_1)
-
-        # layer 2
-        # 2: [(192, 64, 5, 5),     (1, 192, 27, 27),   (1, 64, 27, 27),    (2, 2),     (1, 1)]
-        nvdla_vars_2 = [('m', 12), ('m', 16, True), ('c', 64), ('q', 8), ('p', 8), ('c', 1), 
-                        ('s', 5), ('r', 5), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-        mem_dividers_2w = [0, 1, 10]
-        nvdla_injection_2 = Loop(nvdla_vars_2, mem_dividers_2w, d_type=d_type, sizes=var_sizes[1], paddings=paddings[1], input_strides=[1, 1])
-        loops.append(nvdla_injection_2)
-
-        # layer 3
-        # 3: [(384, 192, 3, 3),    (1, 384, 13, 13),   (1, 192, 13, 13),   (1, 1),     (1, 1)]
-        nvdla_vars_3 = [('m', 24), ('m', 16, True), ('c', 192), ('q', 4), ('p', 4), ('c', 1), 
-                        ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-        mem_dividers_3w = [0, 1, 10]
-        nvdla_injection_3 = Loop(nvdla_vars_3, mem_dividers_3w, d_type=d_type, sizes=var_sizes[2], paddings=paddings[2], input_strides=[1, 1])
-        loops.append(nvdla_injection_3)
-
-        # layer 4
-        # 4: [(256, 384, 3, 3),    (1, 256, 13, 13),   (1, 384, 13, 13),   (1, 1),     (1, 1)]
-        nvdla_vars_4 = [('m', 16), ('m', 16, True), ('c', 384), ('q', 4), ('p', 4), ('c', 1), 
-                        ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-        mem_dividers_4w = [0, 1, 10]
-        nvdla_injection_4 = Loop(nvdla_vars_4, mem_dividers_4w, d_type=d_type, sizes=var_sizes[3], paddings=paddings[3], input_strides=[1, 1])
-        loops.append(nvdla_injection_4)
-
-        # layer 5
-        # 5: [(256, 256, 3, 3),    (1, 256, 13, 13),   (1, 256, 13, 13),   (1, 1),     (1, 1)]
-        nvdla_vars_5 = [('m', 16), ('m', 16, True), ('c', 256), ('q', 4), ('p', 4), ('c', 1), 
-                        ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-        mem_dividers_5w = [0, 1, 10]
-        nvdla_injection_5 = Loop(nvdla_vars_5, mem_dividers_5w, d_type=d_type, sizes=var_sizes[4], paddings=paddings[4], input_strides=[1, 1])
-        loops.append(nvdla_injection_5)
+    mod_inj = ModelInjection(get_alexnet, dataset, 'alexnet', 'nvdla', loops, maxes=ALEXNET_MAX, mins=ALEXNET_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
+    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_alexnet_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
    
-def run_nvdla_resnet18_inputs():
+   
+def run_nvdla_resnet18(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
-    d_type='i'
     
     num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_resnet18, dataset[0]['image'])
 
     # get the loop objects
     loops = []
     
-    def add_loop(loop_list, n):
-        for i in range(n):
-            loop_list.append(0)
-        return loop_list
-    
-    # layer 0
-    nvdla_vars = [('m', 4), ('m', 16, True), ('c', 3), ('q', 28), ('p', 28), ('c', 1), 
-                    ('s', 7), ('r', 7), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
     mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[0], input_strides=strides[0])
-    loops.append(nvdla_injection)
+    if d_type == 'o':
+        mem_dividers = [0]
     
-    # layer 1
-    nvdla_vars = [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[1], input_strides=strides[1])
-    loops.append(nvdla_injection)
+    nvdla_vars = [[('m', 4), ('m', 16, True), ('c', 3), ('q', 28), ('p', 28), ('c', 1), ('s', 7), ('r', 7), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 8), ('m', 16, True), ('c', 64), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 8), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 8), ('m', 16, True), ('c', 64), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 8), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 8), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 256), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 256), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  [('m', 16), ('m', 16, True), ('c', 256), ('q', 7), ('p', 7), ('c', 1), ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  [('m', 32), ('m', 16, True), ('c', 256), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  [('m', 32), ('m', 16, True), ('c', 256), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)], 
+                  [('m', 64), ('m', 16, True), ('c', 512), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]]
     
-    loops = add_loop(loops, 3)
-    
-    # layer 5
-    nvdla_vars = [('m', 8), ('m', 16, True), ('c', 64), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[5], input_strides=strides[5])
-    loops.append(nvdla_injection)
-    
-    # layer 6
-    nvdla_vars = [('m', 8), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[6], input_strides=strides[6])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 3)
-    
-    # layer 10
-    nvdla_vars = [('m', 16), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[10], input_strides=strides[10])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 2)
-    
-    # layer 13
-    nvdla_vars = [('m', 16), ('m', 16, True), ('c', 256), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[13], input_strides=strides[13])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 4)
-    
-    # layer 18
-    nvdla_vars = [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[18], input_strides=strides[18])
-    loops.append(nvdla_injection)
-    
-    # layer 19
-    nvdla_vars = [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[19], input_strides=strides[19])
-    loops.append(nvdla_injection)
+    for i in range(num_layers):
+        if i in layers:
+            assert(i in range(nvdla_vars))
+            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
+            loops.append(nvdla_injection)
+        else:
+            loops.append(None)
     
     debug = True
     inj_inds = []
-    layers = [0, 1, 5, 6, 10, 13, 18, 19]
     
     mod_inj = ModelInjection(get_resnet18, dataset, 'resnet18', 'nvdla', loops, maxes=RESNET18_MAX, mins=RESNET18_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_resnet18_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
-    
-def run_nvdla_resnet18_weights():
+
+
+def run_nvdla_efficientnet_b0(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
-    d_type='w'
     
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_resnet18, dataset[0]['image'])
+    get_net = get_efficientnet_b0
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['image'])
 
     # get the loop objects
     loops = []
     
-    def add_loop(loop_list, n):
-        for i in range(n):
-            loop_list.append(0)
-        return loop_list
-    
-    # layer 0
-    nvdla_vars = [('m', 4), ('m', 16, True), ('c', 3), ('q', 28), ('p', 28), ('c', 1), 
-                    ('s', 7), ('r', 7), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
     mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[0], input_strides=strides[0])
-    loops.append(nvdla_injection)
+    if d_type == 'o':
+        mem_dividers = [0]
+        
+    nvdla_vars = {0: [('m', 2), ('m', 16, True), ('c', 3), ('q', 28), ('p', 28), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  2: [('m', 1), ('m', 8, True), ('c', 32), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  3: [('m', 2), ('m', 16, True), ('c', 8), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)], 
+                  4: [('m', 1), ('m', 16, True), ('c', 32), ('q', 28), ('p', 28), ('c', 1), ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  5: [('m', 6), ('m', 16, True), ('c', 16), ('q', 28), ('p', 28), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  7: [('m', 1), ('m', 4, True), ('c', 96), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  8:  [('m', 6), ('m', 16, True), ('c', 4), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  9: [('m', 2), ('m', 12, True), ('c', 96), ('q', 14), ('p', 14), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  10: [('m', 9), ('m', 16, True), ('c', 24), ('q', 14), ('p', 14), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  12: [('m', 1), ('m', 6, True), ('c', 144), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  13: [('m', 9), ('m', 16, True), ('c', 6), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  15: [('m', 9), ('m', 16, True), ('c', 24), ('q', 14), ('p', 14), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  17: [('m', 1), ('m', 6, True), ('c', 144), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],                  
+                  18: [('m', 9), ('m', 16, True), ('c', 6), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  19: [('m', 4), ('m', 10, True), ('c', 144), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  20: [('m', 15), ('m', 16, True), ('c', 40), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  22: [('m', 1), ('m', 10, True), ('c', 240), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  23: [('m', 15), ('m', 16, True), ('c', 10), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  24: [('m', 15), ('m', 16, True), ('c', 40), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  25: [('m', 15), ('m', 16, True), ('c', 40), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 4), ('p', 4), ('r', 1), ('s', 1)],
+                  27: [('m', 1), ('m', 10, True), ('c', 240), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  28: [('m', 4), ('m', 10, True), ('c', 240), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  29: [('m', 5), ('m', 16, True), ('c', 240), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  30: [('m', 30), ('m', 16, True), ('c', 80), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  32: [('m', 2), ('m', 10, True), ('c', 480), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  33: [('m', 30), ('m', 16, True), ('c', 20), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  34: [('m', 5), ('m', 16, True), ('c', 480), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  35: [('m', 30), ('m', 16, True), ('c', 80), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  37: [('m', 2), ('m', 10, True), ('c', 480), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  38: [('m', 30), ('m', 16, True), ('c', 20), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  39: [('m', 5), ('m', 16, True), ('c', 480), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  40: [('m', 30), ('m', 16, True), ('c', 80), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  42: [('m', 2), ('m', 10, True), ('c', 480), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  43: [('m', 30), ('m', 16, True), ('c', 20), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  44: [('m', 7), ('m', 16, True), ('c', 480), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  45: [('m', 42), ('m', 16, True), ('c', 112), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  47: [('m', 2), ('m', 14, True), ('c', 672), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  48: [('m', 42), ('m', 16, True), ('c', 28), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  49: [('m', 7), ('m', 16, True), ('c', 672), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  50: [('m', 42), ('m', 16, True), ('c', 112), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  52: [('m', 2), ('m', 14, True), ('c', 672), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  53: [('m', 42), ('m', 16, True), ('c', 28), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  54: [('m', 7), ('m', 16, True), ('c', 672), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  55: [('m', 42), ('m', 16, True), ('c', 112), ('q', 7), ('p', 7), ('c', 1), ('s', 1), ('r', 1), ('q', 2), ('p', 2), ('r', 1), ('s', 1)],
+                  57: [('m', 2), ('m', 14, True), ('c', 672), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  58: [('m', 42), ('m', 16, True), ('c', 28), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  59: [('m', 12), ('m', 16, True), ('c', 672), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  60: [('m', 72), ('m', 16, True), ('c', 192), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  62: [('m', 3), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  63: [('m', 72), ('m', 16, True), ('c', 48), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  64: [('m', 12), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  65: [('m', 72), ('m', 16, True), ('c', 192), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  67: [('m', 3), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  68: [('m', 72), ('m', 16, True), ('c', 48), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  69: [('m', 12), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  70: [('m', 72), ('m', 16, True), ('c', 192), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  72: [('m', 3), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  73: [('m', 72), ('m', 16, True), ('c', 48), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  74: [('m', 12), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  75: [('m', 72), ('m', 16, True), ('c', 192), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  77: [('m', 3), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  78: [('m', 72), ('m', 16, True), ('c', 48), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)],
+                  79: [('m', 20), ('m', 16, True), ('c', 1152), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  80: [('m', 80), ('m', 16, True), ('c', 320), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
+                  81: [('m', 64), ('m', 16, True), ('c', 1280), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]}
     
-    # layer 1
-    nvdla_vars = [('m', 4), ('m', 16, True), ('c', 64), ('q', 14), ('p', 14), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[1], input_strides=strides[1])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 3)
-    
-    # layer 5
-    nvdla_vars = [('m', 8), ('m', 16, True), ('c', 64), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[5], input_strides=strides[5])
-    loops.append(nvdla_injection)
-    
-    # layer 6
-    nvdla_vars = [('m', 8), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 4), ('p', 4), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[6], input_strides=strides[6])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 3)
-    
-    # layer 10
-    nvdla_vars = [('m', 16), ('m', 16, True), ('c', 128), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[10], input_strides=strides[10])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 2)
-    
-    # layer 13
-    nvdla_vars = [('m', 16), ('m', 16, True), ('c', 256), ('q', 7), ('p', 7), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 2), ('p', 2), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[13], input_strides=strides[13])
-    loops.append(nvdla_injection)
-    
-    loops = add_loop(loops, 4)
-    
-    # layer 18
-    nvdla_vars = [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[18], input_strides=strides[18])
-    loops.append(nvdla_injection)
-    
-    # layer 19
-    nvdla_vars = [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), 
-                    ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)]
-    mem_dividers = [0, 1, 10]
-    nvdla_injection = Loop(nvdla_vars, mem_dividers, d_type=d_type, sizes=var_sizes[0], paddings=paddings[19], input_strides=strides[19])
-    loops.append(nvdla_injection)
+    for i in range(num_layers):
+        if i in layers:
+            assert(i in nvdla_vars)
+            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
+            loops.append(nvdla_injection)
+        else:
+            loops.append(None)
     
     debug = True
     inj_inds = []
-    layers = [0, 1, 5, 6, 10, 13, 18, 19]
     
-    mod_inj = ModelInjection(get_resnet18, dataset, 'resnet18', 'nvdla', loops, maxes=RESNET18_MAX, mins=RESNET18_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
-    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_resnet18_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
+    mod_inj = ModelInjection(get_net, dataset, 'efficientnet_b0', 'nvdla', loops, maxes=EFFICIENTNET_B0_MAX, mins=EFFICIENTNET_B0_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
+    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_efficientnet_b0_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
+
+
+def run_nvdla_deit_tiny(d_type:str, layers=[]):
+    # get the dataset and network
+    dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
+    
+    get_net = get_deit_tiny
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['image'])
+
+    # get the loop objects
+    loops = []
+    
+    mem_dividers = [0, 1, 10]
+    if d_type == 'o':
+        mem_dividers = [0]
+    
+    nvdla_vars = []
+    
+    nvdla_vars.append([('m', 12), ('m', 16, True), ('c', 3), ('q', 2), ('p', 2), ('c', 1), ('s', 16), ('r', 16), ('q', 7), ('p', 7), ('r', 1), ('s', 1)])
+    for i in range(12):
+        nvdla_vars.append([('m', 36), ('m', 16, True), ('c', 16), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
+        nvdla_vars.append([('m', 12), ('m', 16, True), ('c', 16), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
+        nvdla_vars.append([('m', 48), ('m', 16, True), ('c', 16), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
+        nvdla_vars.append([('m', 12), ('m', 16, True), ('c', 48), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
+    nvdla_vars.append([('m', 64), ('m', 16, True), ('c', 16), ('q', 1), ('p', 1), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
+    
+    for i in range(num_layers):
+        if i in layers:
+            assert(i in nvdla_vars)
+            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
+            loops.append(nvdla_injection)
+        else:
+            loops.append(None)
+    
+    debug = True
+    inj_inds = []
+    
+    mod_inj = ModelInjection(get_net, dataset, 'deit_tiny', 'nvdla', loops, maxes=DEIT_TINY_MAX, mins=DEIT_TINY_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
+    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_deit_tiny_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
+    
     
 def pick_maxmin(model_name:str):
     if model_name == "resnet18":
@@ -389,6 +336,7 @@ def pick_maxmin(model_name:str):
         return (DEIT_TINY_MAX, DEIT_TINY_MIN)
     else:
         return ([], [])
+    
         
 def pick_img_inds(model_name:str):
     if model_name == "resnet18":
@@ -403,6 +351,32 @@ def pick_img_inds(model_name:str):
         return sample_deit_tiny_correct_img_inds
     else:
         return []
+    
+    
+def pick_level_names(arch_name:str, d_type:str='i'):
+    if arch_name in ['eyeriss']:
+        if d_type == 'i':
+            mem_levels = ['DRAM', 'shared_glb', 'ifmap_spad']
+        else:
+            mem_levels = ['DRAM', 'weights_spad']
+    elif arch_name in ['nvdla']:
+        if d_type == 'i':
+            mem_levels = ['DRAM', 'GlobalBuffer', 'input_reg']
+        else:
+            mem_levels = ['DRAM', 'GlobalBuffer', 'weight_reg']
+    elif arch_name in ['simba']:
+        if d_type == 'i':
+            mem_levels = ['DRAM', 'GlobalBuffer', 'PEInputBuffer']
+        else:
+            mem_levels = ['DRAM', 'PEWeightBuffer', 'PEWeightRegs']
+    else:
+        assert(False and "I don't know this architecture: " + arch_name)
+        
+    if d_type == 'o':
+        mem_levels = ['DRAM']
+    
+    return mem_levels
+    
     
 def run_injection(get_net:Callable, model_name:str, arch_name:str, d_type:str="i", layers:List=[], inj_inds:List=[], loops:List=[], overwrite:bool=False, print_loops:bool=False):
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
@@ -421,6 +395,7 @@ def run_injection(get_net:Callable, model_name:str, arch_name:str, d_type:str="i
     mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, overwrite=overwrite, debug=debug, d_type=d_type, max_range=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=pick_img_inds(model_name), debug=debug, inj_sites=inj_inds, layers=layers)
     print(correct_rate)
+    
 
 def get_network_max(get_net, get_dataset, n=1000):
     net = get_net()
@@ -429,54 +404,98 @@ def get_network_max(get_net, get_dataset, n=1000):
     print(maxes)
     print(mins)
     
+    
 def get_resnet18_max_img(img):
     net = get_resnet18()
     maxes, mins = get_range_img(net, img)
     print(maxes)
     print(mins)
+    
 
-def run_plot(arch_name, net_name, add_on='', d_type='i', layers=[], correct_rate=1.0, xentropy=False, sparsity=False, num_sites=False, maxes_mins=False, sites_ratio=False, all=False):
-    if arch_name == 'eyeriss':
-        if d_type == 'i':
-            mem_levels = ['DRAM', 'shared_glb', 'ifmap_spad']
-        else:
-            mem_levels = ['DRAM', 'weights_spad']
-    elif arch_name == 'nvdla':
-        if d_type == 'i':
-            mem_levels = ['DRAM', 'GlobalBuffer', 'input_reg']
-        else:
-            mem_levels = ['DRAM', 'GlobalBuffer', 'weight_reg']
-    elif arch_name == 'simba':
-        if d_type == 'i':
-            mem_levels = ['DRAM', 'GlobalBuffer', 'PEInputBuffer']
-        else:
-            mem_levels = ['DRAM', 'PEWeightBuffer', 'PEWeightRegs']
-    else:
-        assert(False and "I don't know this architecture")
+def run_plot(arch_name, net_name, correlate=False, add_on='', d_type='i', layers=[], correct_rate=1.0, xentropy=False, plot_levels=False,
+             sparsity=False, num_sites=False, maxes_mins=False, sites_ratio=False, plot_all=False, threshold=-1, no_plot=False, data_all=False, overwrite=True):
+    mem_levels = pick_level_names(arch_name, d_type=d_type)
         
-    if maxes_mins or all:
-        maxes, mins = pick_maxmin(net_name)
-        new_maxes = []
-        new_mins = []
-        for i in range(len(maxes)):
-            # if i in layers:
-            new_maxes.append(maxes[i])
-            new_mins.append(mins[i])
-        maxmin = (new_maxes, new_mins)
-    else:
-        maxmin = []
+    maxmin = pick_maxmin(net_name)
         
-    plotter = Plotter(arch_name, net_name, d_type=d_type, add_on=add_on, layers=layers)
-    if all:
+    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=add_on, layers=layers, overwrite=overwrite)
+    
+    if data_all:
+        if threshold == -1:
+            threshold = 2.0
+        plotter.collect_stats(thresh=threshold)
+    
+    if correlate or data_all:
+        plotter.correlate(level_names=mem_levels)
+    
+    if no_plot:
+        return
+    
+    if plot_levels or plot_all:
+        plotter.plot(level_names=mem_levels, agg_layers=True)
+    
+    if plot_all:
         num_options = len([xentropy, sparsity, num_sites, maxes_mins, sites_ratio])
         for i in range(num_options):
-            if i==3:
-                new_maxmin = maxmin
-            else:
-                new_maxmin = []
-            plotter.plot_v2(level_names=mem_levels, xentropy=i==0, sparsity=i==1, num_sites=i==2, maxes_mins=new_maxmin, sites_ratio=i==4)
+            plotter.plot_v2(level_names=mem_levels, xentropy=i==0, sparsity=i==1, num_sites=i==2, maxes_mins=i==3, sites_ratio=i==4)
     else:
-        plotter.plot_v2(level_names=mem_levels, xentropy=xentropy, sparsity=sparsity, num_sites=num_sites, maxes_mins=maxmin, sites_ratio=sites_ratio)
+        plotter.plot_v2(level_names=mem_levels, xentropy=xentropy, sparsity=sparsity, num_sites=num_sites, maxes_mins=maxes_mins, sites_ratio=sites_ratio)
+
+
+def plot_all(d_type='i'):
+    arch_names = ["eyeriss", "nvdla", "simba"]
+    net_names = ["alexnet", "deit_tiny", "efficientnet_b0", "resnet18"]
+    
+    not_done = {'i': {"eyeriss": [], 
+                      "nvdla": [], 
+                      "simba": []}, 
+                'w': {"eyeriss": [], 
+                      "nvdla": [], 
+                      "simba": []}, 
+                'o': {"eyeriss": [], 
+                      "nvdla": [], 
+                      "simba": []} }
+    
+    cached_dict = {}
+    cache_filename = "data_results/plots/cached_data.txt"
+    if exists(cache_filename):
+        with open(cache_filename, 'rb') as cache_file:
+            cached_dict = pickle.load(cache_file)
+            assert(isinstance(cached_dict, dict))
+    
+    plot_dict = {}
+    names_dict = {}
+    new_dict = False
+    for arch_name in arch_names:
+        net_dict = {}
+        mem_levels = pick_level_names(arch_name, d_type=d_type)
+        names_dict[arch_name] = mem_levels
+        for net_name in net_names:
+            maxmin = pick_maxmin(net_name)
+
+            if net_name in not_done[d_type][arch_name]:
+                print("No data for: " + net_name + " on " + arch_name)
+                net_dict[net_name] = ([], [])
+            else:
+                if cached_dict and cached_dict[arch_name][net_name][0]:
+                    print("Using cached data for: " + net_name + " on " + arch_name)
+                    net_dict[net_name] = cached_dict[arch_name][net_name]
+                else:
+                    print("Getting data for: " + net_name + " on " + arch_name)
+                    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on="", layers=[], overwrite=False)
+                    net_dict[net_name] = plotter.plot(level_names=mem_levels, agg_layers=True, just_data=True)
+                    new_dict = True
+        plot_dict[arch_name] = net_dict
+    
+    if new_dict:
+        print("Caching data...")
+        with open(cache_filename, 'wb') as cache_file:
+            pickle.dump(plot_dict, cache_file)
+    
+    print(plot_dict)
+    
+    combine_plots(plot_dict, names_dict)
+
 
 if __name__=="__main__":
     
@@ -484,6 +503,7 @@ if __name__=="__main__":
     Prints a table with layer sizes and layer ids
     '''
     # print_layer_sizes(get_alexnet(), 'alexnet')
+    
     
     '''
     Gets the maxes/mins of the outputs of the conv/FC layers of network provided
@@ -496,11 +516,15 @@ if __name__=="__main__":
     '''
     # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="i")
     # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="w")
+    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="o")
+    
     
     '''
     Plots the data collected from an injection experiment (in the data files)
     '''
     # run_plot('eyeriss', 'alexnet', d_type='i', add_on="")
     # run_plot('eyeriss', 'alexnet', d_type='w', add_on="")
+    # run_plot('eyeriss', 'alexnet', d_type='o', add_on="")
+    
     
     pass
