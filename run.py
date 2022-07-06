@@ -442,7 +442,7 @@ def run_plot(arch_name, net_name, correlate=False, add_on='', d_type='i', layers
         plotter.plot_v2(level_names=mem_levels, xentropy=xentropy, sparsity=sparsity, num_sites=num_sites, maxes_mins=maxes_mins, sites_ratio=sites_ratio)
 
 
-def plot_all(d_type='i'):
+def plot_all(d_type = 'i'):
     arch_names = ["eyeriss", "nvdla", "simba"]
     net_names = ["alexnet", "deit_tiny", "efficientnet_b0", "resnet18"]
     
@@ -457,7 +457,7 @@ def plot_all(d_type='i'):
                       "simba": []} }
     
     cached_dict = {}
-    cache_filename = "data_results/plots/cached_data.txt"
+    cache_filename = "data_results/plots/cached_data_" + d_type + ".txt"
     if exists(cache_filename):
         with open(cache_filename, 'rb') as cache_file:
             cached_dict = pickle.load(cache_file)
@@ -466,6 +466,7 @@ def plot_all(d_type='i'):
     plot_dict = {}
     names_dict = {}
     new_dict = False
+
     for arch_name in arch_names:
         net_dict = {}
         mem_levels = pick_level_names(arch_name, d_type=d_type)
@@ -483,7 +484,7 @@ def plot_all(d_type='i'):
                 else:
                     print("Getting data for: " + net_name + " on " + arch_name)
                     plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on="", layers=[], overwrite=False)
-                    net_dict[net_name] = plotter.plot(level_names=mem_levels, agg_layers=True, just_data=True)
+                    net_dict[net_name] = (plotter.avg_errors, plotter.avg_sites)
                     new_dict = True
         plot_dict[arch_name] = net_dict
     
@@ -491,10 +492,8 @@ def plot_all(d_type='i'):
         print("Caching data...")
         with open(cache_filename, 'wb') as cache_file:
             pickle.dump(plot_dict, cache_file)
-    
-    print(plot_dict)
-    
-    combine_plots(plot_dict, names_dict)
+        
+    combine_plots(plot_dict, names_dict, d_type)
 
 
 if __name__=="__main__":

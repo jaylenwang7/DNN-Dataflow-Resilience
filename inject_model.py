@@ -119,23 +119,6 @@ class InjectModel(nn.Module):
         # if injecting into input - need to do this online during the hook
         if self.d_type == 'i':
             inject_val = input_tensor[0][self.inj_coord]
-            
-            # # for data recording purposes - get the original value
-            # self.pre_value = inject_val.detach().clone()
-            
-            # # change the value depending on the mode
-            # if self.mode == 0:
-            #     inject_val = bitflip.flip_bit(inject_val, self.bit)
-            # elif self.mode == 1:
-            #     inject_val = bitflip.flip_random_bit(inject_val)
-            # elif self.mode == 2:
-            #     inject_val = torch.as_tensor(self.change_to)
-            # else:
-            #     assert(False)
-            # # record changed value
-            # self.post_value = inject_val.detach().clone()
-            
-            # inject the new value into the input
             input_tensor[0][self.inj_coord] = self.bitflip_value(inject_val)
         
         if self.d_type != 'o':
@@ -261,20 +244,6 @@ class InjectModel(nn.Module):
         with torch.no_grad():
             # get the clean value
             inject_val = self.layer.weight[self.inj_coord]
-            # self.pre_value = inject_val.detach().clone()
-            
-            # # get the new injected value depending on mode
-            # if self.mode == 0:
-            #     inject_val = bitflip.flip_bit(inject_val, self.bit)
-            # elif self.mode == 1:
-            #     inject_val = bitflip.flip_bit(inject_val)
-            # elif self.mode == 2:
-            #     inject_val = torch.as_tensor(self.change_to)
-            # else:
-            #     assert(False)
-            # self.post_value = inject_val
-            
-            # replace value within the weights
             self.layer.weight[self.inj_coord] = self.bitflip_value(inject_val)
     
     def get_weight(self):

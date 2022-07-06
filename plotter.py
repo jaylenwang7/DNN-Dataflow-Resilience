@@ -14,11 +14,11 @@ SITES_COLOR = 'tab:blue'
 TITLE_SIZE = 18
 TICK_SIZE = 12
 AXES_SIZE = 14
-MARKER_SIZE = 15
+MARKER_SIZE = 8
 
 # object used to plot data
 class Plotter():
-    fields = ["Model", "Arch", "Acc0", "Acc1", "Acc2", "Sites0", "Sites1", "Sites2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8"]
+    fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8"]
     
     def __init__(self, arch_name, net_name, max_mins, layers=[], d_type='i', add_on='', overwrite=True):
         self.arch_name = arch_name
@@ -218,7 +218,7 @@ class Plotter():
 
     # plot the aggregated results of all the layers on the same plot
     # compared to the baseline
-    def plot(self, level_names=[], show_chart=False, agg_layers=True, plot_error=True, just_data=False):
+    def plot(self, level_names=[], agg_layers=True, just_data=False):
         
         fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(10, 8))
         axes1 = axes.twinx()
@@ -228,38 +228,21 @@ class Plotter():
         if not agg_layers:
             # loop through layers
             for i in range(len(self.layers)):
-                # collect data aggregated by level
-                level_data = self.collect_layer_data(i, "Level")
-
-                # display chart if want
-                if show_chart:
-                    display(level_data)
-
                 # plot the error rate
-                ax = level_data['Error Rate'].plot(style='o', ms=10, logx=False)
+                axes.plot(self.avg_errors, style='o', ms=10, logx=False)
 
                 # plot the given labels for the x values (i.e. DRAM, etc.)
                 tick_list = [i for i in range(len(level_names))]
-                ax.set_xticks(tick_list)
-                ax.set_xticklabels(level_names, fontsize=TICK_SIZE)
+                axes.set_xticks(tick_list)
+                axes.set_xticklabels(level_names, fontsize=TICK_SIZE)
                 
                 labels.append("Layer " + str(self.layers[i]))
         else:
-            level_data = self.agg_layer_data("Level")
             # plot the error rate
-            if plot_error:
-                error_rate = [1.0 - error for error in level_data['Error Rate']]
-                axes.plot(error_rate, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
-                axes.set_ylim(bottom=0.0)
-            else:
-                error_rate = level_data['Error Rate']
-                axes.plot(error_rate, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
-                axes.set_ylim(top=1.0)
-            
-            avg_sites = []
-            for i in range(self.nlevels):
-                avg_sites.append(np.mean(np.array(self.numsites[i])))
-            axes1.plot(avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
+            axes.plot(self.avg_errors, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
+            axes.set_ylim(bottom=0.0)
+
+            axes1.plot(self.avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
             axes1.set_ylabel("Mean number of reuse sites", color=SITES_COLOR, fontsize=AXES_SIZE)
             axes1.tick_params(axis='y', labelcolor=SITES_COLOR)
             
@@ -267,12 +250,6 @@ class Plotter():
             tick_list = [i for i in range(len(level_names))]
             axes.set_xticks(tick_list)
             axes.set_xticklabels(level_names, fontsize=12)
-            # for i in range(len(error_rate)):
-            #     axes.text(tick_list[i], error_rate[i], error_rate[i], size=10)
-        
-        if just_data:
-            plt.close('all')
-            return error_rate, avg_sites
         
         fig.legend(labels=labels,
                    loc="right")
@@ -286,13 +263,9 @@ class Plotter():
 
         
         axes.set_xlabel("Memory Level (larger \u2192 smaller)", fontsize=AXES_SIZE)
-        title = self.net_name + " on " + self.arch_name
-        if plot_error:
-            axes.set_ylabel("Mean Top-1 Error", fontsize=AXES_SIZE)
-            title += " Top-1 Error"
-        else:
-            axes.set_ylabel("Mean Top-1 Accuracy", fontsize=AXES_SIZE)
-            title += " Top-1 Accuracy"
+        title = fancy_names[self.net_name] + " on " + fancy_names[self.arch_name] + self.d_type_name
+        axes.set_ylabel("Mean Top-1 Error", fontsize=AXES_SIZE)
+        title += " Top-1 Error"
         
         axes.set_title(title, fontsize=TITLE_SIZE)
 
@@ -332,20 +305,11 @@ class Plotter():
         num_samples = groups.size()
         bit_error = (groups["ClassifiedCorrect"].sum() / num_samples).tolist()
         
-        error_arr = np.zeros(len(self.layers))
-        avg_diffs = []
-        avg_sites = []
-        for i in range(self.nlevels):
-            avg_diffs.append(np.mean(np.array(self.error[i]) - error_arr))
-            error_arr = np.array(self.error[i])
-            
-            avg_sites.append(np.mean(np.array(self.numsites[i])))
-        
         def pad_list(lst, to_len=3):
             lst += [None] * (to_len-len(lst))
             return lst
         
-        row = [self.net_name, self.arch_name] + pad_list(avg_diffs) + pad_list(avg_sites) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + bit_error
+        row = [fancy_names[self.net_name], fancy_names[self.arch_name]] + pad_list(self.avg_errors) + pad_list(self.avg_sites) + pad_list(self.avg_rats) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + bit_error
         
         with open(self.stats_file) as inf:
             reader = csv.reader(inf.readlines())
@@ -406,7 +370,6 @@ class Plotter():
         for i in range(len(self.layers)):
             # get a table with the data for each level
             level_data = self.collect_layer_data(i, "Level")
-            # display(level_data)
             
             # extract a column of the data and turn into a list, with data for each level
             error_data = level_data['Error Rate'].tolist()
@@ -439,6 +402,14 @@ class Plotter():
         self.numsites = all_numsites
         self.siteratio = site_rats
         self.sparsity = zeros
+        
+        self.avg_errors = []
+        self.avg_sites = []
+        self.avg_rats = []
+        for i in range(self.nlevels):
+            self.avg_errors.append(1 - np.mean(np.array(self.error[i])))
+            self.avg_sites.append(np.mean(np.array(self.numsites[i])))
+            self.avg_rats.append(np.mean(np.array(self.siteratio[i])))
         
         self.extracted = True
         
@@ -508,7 +479,7 @@ class Plotter():
         else:
             axes.set_ylabel("Mean XEntropy", fontsize=fontsize)
         
-        title = self.net_name + " on " + self.arch_name + " " + self.d_type_name
+        title = fancy_names[self.net_name] + " on " + fancy_names[self.arch_name] + " " + self.d_type_name
         axes.set_title(title)
         
         # save the figure to a png file in the `plots` directory
@@ -593,43 +564,78 @@ fancy_names = {"alexnet": "AlexNet",
                "nvdla": "NVDLA",
                "eyeriss": "Eyeriss",
                "simba": "Simba"}
-        
 
-def combine_plots(data_dict, names_dict):
-    print("Creating BIG plot...")
-    x_subplots = len(data_dict)
+def get_max_mat(data_dict):
     y_subplots = max(len(d) for d in data_dict.values())
-    fig, axes = plt.subplots(y_subplots, x_subplots, figsize=(25, 20), sharex=True, sharey=True)
-    
-    x_coord = 0
-    ax_mat = [[]]*y_subplots
+    error_mat = [[] for i in range(y_subplots)]
+    sites_mat = [[] for i in range(y_subplots)]
     for arch_name in data_dict:
         y_coord = 0
         arch_dict = data_dict[arch_name]
-        prev_ax = None
+        for net_name in arch_dict:
+            error, avg_sites = arch_dict[net_name]
+            error_mat[y_coord].append(max(error))
+            sites_mat[y_coord].append(max(avg_sites))
+            y_coord += 1
+    return error_mat, sites_mat
+
+def combine_plots(data_dict, names_dict, d_type, bar_plot=False, all_d_types=False):
+    print("Creating BIG plot...")
+    x_subplots = len(data_dict)
+    y_subplots = max(len(d) for d in data_dict.values())
+    fig, axes = plt.subplots(y_subplots, x_subplots, figsize=(8, 10), sharex=True)
+    
+    x_coord = 0
+    ax_mat = [[] for i in range(y_subplots)]
+    max_errors, max_sites = get_max_mat(data_dict)
+
+    row_maxes = []
+    for e, s in zip(max_errors, max_sites):
+        row_maxes.append((max(e), max(s)))
+        
+    for arch_name in data_dict:
+        y_coord = 0
+        arch_dict = data_dict[arch_name]
         for net_name in arch_dict:
             error, avg_sites = arch_dict[net_name]
             level_names = names_dict[arch_name]
             
             ax = axes[y_coord, x_coord]
-            ax_mat[y_coord].append(ax)
+            twin_ax = ax.twinx()
+            ax_mat[y_coord].append((ax, twin_ax))
             
             if not error:
                 ax.axis('off')
-                # ax_mat[y_coord].append(None)
+                twin_ax.axis('off')
                 continue
             
-            # ax_mat[y_coord].append(ax)
-            
-            ax.plot(error, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
-            twin_ax = ax.twinx()
-            twin_ax.plot(avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
+            if not bar_plot:
+                ax.plot(error, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
+                row_max = row_maxes[y_coord]
+                # ax.set_ylim(bottom=0)
+                ax.set_ylim(bottom=0, top=row_max[0]*1.1)
+                
+                twin_ax.plot(avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
+                # twin_ax.set_ylim(bottom=0)
+                twin_ax.set_ylim(bottom=0, top=row_max[1]*1.1)
+            else:
+                ax.bar(error, marker='o', markersize=MARKER_SIZE, color=PLOT_COLOR)
+                twin_ax.plot(avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
             twin_ax.tick_params(axis='y', labelcolor=SITES_COLOR)
+            
+            # if x_coord > 0:
+            #     ax.get_shared_y_axes().join(ax, ax_mat[y_coord][x_coord-1][0])
+            #     twin_ax.get_shared_y_axes().join(twin_ax, ax_mat[y_coord][x_coord-1][1])
             
             # plot the given labels for the x values (i.e. DRAM, etc.)
             tick_list = [i for i in range(len(level_names))]
             ax.set_xticks(tick_list)
-            ax.set_xticklabels(level_names, fontsize=TICK_SIZE)
+            ax.set_xticklabels(level_names, fontsize=TICK_SIZE, rotation=45)
+            
+            if x_coord > 0:
+                ax.set_yticklabels([])
+            if x_coord < x_subplots - 1:
+                twin_ax.set_yticklabels([])
         
             # axes.set_xlabel("Memory Level (larger \u2192 smaller)", fontsize=AXES_SIZE)
             # axes.set_ylabel("Mean Top-1 Error", fontsize=AXES_SIZE)
@@ -638,15 +644,13 @@ def combine_plots(data_dict, names_dict):
             # plt.ylabel("Mean number of reuse sites", color='tab:blue', fontsize=AXES_SIZE)
                 
             y_coord += 1
-        if x_coord > 0:
-            ax.get_shared_y_axes().join(ax_mat[y_coord][x_coord-1])
         x_coord += 1
     
     # get name for saving the img and save it
     data_dir = "data_results/plots/"
     p = Path(data_dir)
     p.mkdir(parents=True, exist_ok=True)
-    target_name = data_dir + "big_plot"
+    target_name = data_dir + "big_plot_" + d_type
     plt.savefig(get_name(target_name, overwrite=False))
     plt.close('all')
     
