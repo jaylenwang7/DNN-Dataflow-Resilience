@@ -3,7 +3,18 @@ import torch
 from helpers import num_nonzeros
 
 class CleanModel(nn.Module):
-    def __init__(self, model: nn.Module, process_FC=False):
+    """Wrapper of the PyTorch nn.Module that is used to get the clean outputs of layers and other info about the native model
+    without any injections.
+    """
+    
+    def __init__(self, model: nn.Module, process_FC: bool=False):
+        """Initializes a CleanModel instance.
+
+        Args:
+            model (nn.Module): The network that this wrapper wraps around.
+            process_FC (bool, optional): Sets whether to process FC layers (CONV layers always processed). Defaults to False.
+        """
+           
         super().__init__()
         self.model = model
         self.clean_outputs = []
@@ -24,7 +35,7 @@ class CleanModel(nn.Module):
                 self.weight_zeros.append((weight_zeros, weight_el))
                 num_layer += 1
     
-    def run(self, module, input_value, output):
+    def run(self, module, input_value, output) -> None:
         # if at target layer, then record the output and zeros
         if self.layer_ind == self.target_id or self.target_id == -1:
             self.clean_outputs.append(output.detach().clone())
@@ -36,10 +47,10 @@ class CleanModel(nn.Module):
             self.output_zeros.append(None)
         self.layer_ind += 1
     
-    def set_target_id(self, target_id=-1):
+    def set_target_id(self, target_id: int=-1) -> None:
         self.target_id = target_id
     
-    def reset(self):
+    def reset(self) -> None:
         self.clean_outputs = []
         self.output_zeros = []
         self.input_zeros = []
@@ -52,16 +63,16 @@ class CleanModel(nn.Module):
     def get_clean_outputs(self):
         return self.clean_outputs
 
-    def get_clean_output(self, layer_id):
+    def get_clean_output(self, layer_id: int):
         return self.clean_outputs[layer_id]
     
-    def get_nonzero(self, layer_id):
+    def get_nonzero(self, layer_id: int):
         return (self.output_zeros[layer_id], self.input_zeros[layer_id], self.weight_zeros[layer_id])
     
     def get_nonzeros(self):
         return (self.output_zeros, self.input_zeros, self.weight_zeros)
 
-def run_clean(clean_net, test_img, layer_id=-1):
+def run_clean(clean_net: CleanModel, test_img, layer_id: int=-1):
     clean_net.reset()
     clean_net.set_target_id(layer_id)
     with torch.no_grad():

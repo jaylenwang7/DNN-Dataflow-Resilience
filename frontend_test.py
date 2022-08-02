@@ -6,20 +6,22 @@ import loop as Loop
 from inject_model import InjectModel
 from clean_model import CleanModel, run_clean
 from info_model import get_layer_info
+from typing import Callable
 
-def run_thousand():
+def run_thousand(get_net: Callable) -> None:
+      
     dataset = get_dataset()
-    alexnet = get_alexnet()
+    net = get_net()
     img = dataset[0]['image']
     img = torch.unsqueeze(img, 0)
 
     start_time = time.time()
     for i in range(1000):
-        alexnet(img)
+        net(img)
     print("--- %s seconds ---" % (time.time() - start_time))
     pass
 
-def run_thousand_injected():
+def run_thousand_injected_alexnet() -> None:
     M = 192
     C = 64
     R = 5
@@ -160,6 +162,8 @@ def test_inject():
     print("Number of output neurons different: " + str(num_diff))
     print("Ranges: " + str(ranges))
 
-# run_thousand()
-# run_thousand_injected()
-test_inject()
+
+if __name__=="__main__":
+    # run_thousand(get_alexnet)
+    # run_thousand_injected_alexnet()
+    test_inject()

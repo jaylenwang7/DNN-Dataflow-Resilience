@@ -18,7 +18,6 @@ MARKER_SIZE = 8
 
 # object used to plot data
 class Plotter():
-    fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8"]
     
     def __init__(self, arch_name, net_name, max_mins, layers=[], d_type='i', add_on='', overwrite=True):
         self.arch_name = arch_name
@@ -187,7 +186,7 @@ class Plotter():
     # given by axis_title - for the layer layer_id
     def collect_layer_data(self, layer_id, axis_title):
         df = pd.read_csv(self.filenames[layer_id])
-        return self.agg_data(df, axis_title)
+        return self.agg_data(df, axis_title), len(df)
     
     # collect data for all layers - grouped by the axis_title
     def agg_layer_data(self, axis_title):
@@ -243,13 +242,13 @@ class Plotter():
             axes.set_ylim(bottom=0.0)
 
             axes1.plot(self.avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
-            axes1.set_ylabel("Mean number of reuse sites", color=SITES_COLOR, fontsize=AXES_SIZE)
+            axes1.set_ylabel("Avg. number of reuse sites", color=SITES_COLOR, fontsize=AXES_SIZE)
             axes1.tick_params(axis='y', labelcolor=SITES_COLOR)
             
             # plot the given labels for the x values (i.e. DRAM, etc.)
             tick_list = [i for i in range(len(level_names))]
             axes.set_xticks(tick_list)
-            axes.set_xticklabels(level_names, fontsize=12)
+            axes.set_xticklabels(level_names, fontsize=TICK_SIZE)
         
         fig.legend(labels=labels,
                    loc="right")
@@ -264,7 +263,7 @@ class Plotter():
         
         axes.set_xlabel("Memory Level (larger \u2192 smaller)", fontsize=AXES_SIZE)
         title = fancy_names[self.net_name] + " on " + fancy_names[self.arch_name] + self.d_type_name
-        axes.set_ylabel("Mean Top-1 Error", fontsize=AXES_SIZE)
+        axes.set_ylabel("Avg. Top-1 Error", fontsize=AXES_SIZE)
         title += " Top-1 Error"
         
         axes.set_title(title, fontsize=TITLE_SIZE)
@@ -273,12 +272,15 @@ class Plotter():
         target_name = self.img_dir + "levels_" + self.d_type + self.add_on
         plt.savefig(get_name(target_name, overwrite=self.overwrite))
         plt.close('all')
-        
     
+    # fields used for stats files
+    fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "NonZeroRate", "ZeroRate", "NumNonZero", "NumZero", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8", "NumSamples"]
     def collect_stats(self, thresh=2.0):
         all_dfs = []
+        nsamples = 0
         for i in range(len(self.layers)):
             df = pd.read_csv(self.filenames[i])
+            nsamples += len(df)
             if "BitInd" not in df:
                 print(self.filenames[i])
                 assert(False)
@@ -290,6 +292,7 @@ class Plotter():
         df["Diff"] = df.apply(lambda x: abs(max(min(x["Postval"], eval(x["MaxMin"])[0]), eval(x["MaxMin"])[1]) - x["Preval"]), axis=1)
         df["AbsPreval"] = df["Preval"].apply(lambda x: abs(x))
         df["AbsPostval"] = df.apply(lambda x: abs(max(min(x["Postval"], eval(x["MaxMin"])[0]), eval(x["MaxMin"])[1])), axis=1)
+        df["ZeroRate"] = df["Preval"].apply(lambda x: x==0)
         
         avg_vals = [df["AbsPreval"].mean(), df["AbsPostval"].mean(), df["Diff"].mean()]
         
@@ -305,11 +308,15 @@ class Plotter():
         num_samples = groups.size()
         bit_error = (groups["ClassifiedCorrect"].sum() / num_samples).tolist()
         
+        groups = df.groupby("ZeroRate")
+        zero_samples = groups.size()
+        zero_error = (groups["ClassifiedCorrect"].sum() / zero_samples).tolist()
+        
         def pad_list(lst, to_len=3):
             lst += [None] * (to_len-len(lst))
             return lst
         
-        row = [fancy_names[self.net_name], fancy_names[self.arch_name]] + pad_list(self.avg_errors) + pad_list(self.avg_sites) + pad_list(self.avg_rats) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + bit_error
+        row = [fancy_names[self.net_name], fancy_names[self.arch_name]] + pad_list(self.avg_errors) + pad_list(self.avg_sites) + pad_list(self.avg_rats) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + pad_list(zero_error, to_len=2) + pad_list(zero_samples.to_list(), to_len=2) + bit_error + [nsamples]
         
         with open(self.stats_file) as inf:
             reader = csv.reader(inf.readlines())
@@ -317,7 +324,7 @@ class Plotter():
         with open(self.stats_file, 'w', newline='') as csvfile: 
             # creating a csv writer object 
             csvwriter = csv.writer(csvfile, delimiter=',')
-            print("Writing stats to: " + str(self.stats_file))
+            print("Writing " + self.net_name + " on " + self.arch_name + " stats to: " + str(self.stats_file))
             contained = False
             changed = False
             first = True
@@ -359,7 +366,7 @@ class Plotter():
         tots = new_tots
         
         # get the number of levels
-        level_data = self.collect_layer_data(0, "Level")
+        level_data, num = self.collect_layer_data(0, "Level")
         nlevels = len(level_data['Error Rate'].tolist())
         self.nlevels = nlevels
         
@@ -367,9 +374,11 @@ class Plotter():
         all_error = [[] for i in range(nlevels)]
         all_xentropy = [[] for i in range(nlevels)]
         all_numsites = [[] for i in range(nlevels)]
+        num_samples = []
         for i in range(len(self.layers)):
             # get a table with the data for each level
-            level_data = self.collect_layer_data(i, "Level")
+            level_data, num = self.collect_layer_data(i, "Level")
+            num_samples.append(num)
             
             # extract a column of the data and turn into a list, with data for each level
             error_data = level_data['Error Rate'].tolist()
@@ -402,6 +411,7 @@ class Plotter():
         self.numsites = all_numsites
         self.siteratio = site_rats
         self.sparsity = zeros
+        self.num_samples = num_samples
         
         self.avg_errors = []
         self.avg_sites = []
@@ -428,16 +438,21 @@ class Plotter():
             
     def plot_v2(self, level_names=[], xentropy=False, sparsity=False, num_sites=False, overlay=True, sites_ratio=False, maxes_mins=False):
         assert(self.extracted)
+        
         # plot on x axis the layers and on y axis the correct rate
-        fig, axes = plt.subplots(figsize=(16, 8))
+        fig, axes = plt.subplots(figsize=(10, 8))
         assert(sparsity + num_sites + maxes_mins + sites_ratio <= 1)
         if sparsity or num_sites or maxes_mins or sites_ratio:
             axes1 = axes.twinx()
+            axes1.tick_params(labelsize=TICK_SIZE)
+        axes.tick_params(labelsize=TICK_SIZE)
         
         # plot the error data
         for i in range(self.nlevels):
             if not xentropy:
-                axes.plot(self.layers, self.error[i])
+                axes.plot(self.layers, self.error[i], linestyle='-', marker='o')
+                # axes.plot(self.layers, [1 - e for e in self.error[i]])
+                # axes.set_ylim(bottom=0)
             else:
                 axes.plot(self.layers, self.xentropy[i])
         
@@ -446,41 +461,40 @@ class Plotter():
         if sparsity:
             spars_color = "tab:brown"
             spars_linestyle = "--"
-            axes1.set_ylabel("Perc. of inputs zero", color=spars_color)
-            axes1.plot(self.layers, self.sparsity, color=spars_color, linestyle=spars_linestyle)
+            axes1.set_ylabel("Perc. of inputs zero", color=spars_color, fontsize=AXES_SIZE)
+            axes1.plot(self.layers, self.sparsity, color=spars_color, linestyle=spars_linestyle, marker='o')
             axes1.tick_params(axis='y', labelcolor=spars_color)
         elif sites_ratio:
             linestyle = "--"
             for i in range(self.nlevels):
-                axes1.plot(self.layers, self.siteratio[i], linestyle=linestyle)
-            axes1.set_ylabel("Ratio of sites/total elements")
+                axes1.plot(self.layers, self.siteratio[i], linestyle=linestyle, marker='o')
+            axes1.set_ylabel("Ratio of sites/total elements", fontsize=AXES_SIZE)
         elif num_sites:
             linestyle = "--"
-            axes1.set_ylabel("Mean number of reuse sites")
+            axes1.set_ylabel("Avg. number of reuse sites", fontsize=AXES_SIZE)
             for i in range(self.nlevels):
                 color = cmap(i)
-                axes1.plot(self.layers, self.numsites[i], color=color, linestyle=linestyle)
+                axes1.plot(self.layers, self.numsites[i], color=color, linestyle=linestyle, marker='o')
         elif maxes_mins:
             max_linestyle = "--"
             min_linestyle = ":"
             color = "k"
-            axes1.set_ylabel("Range of output values of layer")
-            axes1.plot(self.layers, self.maxes, color=color, linestyle=max_linestyle)
-            axes1.plot(self.layers, self.mins, color=color, linestyle=min_linestyle)
+            axes1.set_ylabel("Range of output values of layer", fontsize=AXES_SIZE)
+            axes1.plot(self.layers, self.maxes, color=color, linestyle=max_linestyle, marker='o')
+            axes1.plot(self.layers, self.mins, color=color, linestyle=min_linestyle, marker='o')
             
         fig.legend(labels=level_names)
         axes.xaxis.set_major_locator(MaxNLocator(integer=True))
         
         # set axis titles
-        fontsize = 14
-        axes.set_xlabel("Layer number", fontsize=fontsize)
+        axes.set_xlabel("Layer number", fontsize=AXES_SIZE)
         if not xentropy:
-            axes.set_ylabel("Mean Top-1 Accuracy", fontsize=fontsize)
+            axes.set_ylabel("Avg. Top-1 Accuracy", fontsize=AXES_SIZE)
         else:
-            axes.set_ylabel("Mean XEntropy", fontsize=fontsize)
+            axes.set_ylabel("Avg. XEntropy", fontsize=AXES_SIZE)
         
         title = fancy_names[self.net_name] + " on " + fancy_names[self.arch_name] + " " + self.d_type_name
-        axes.set_title(title)
+        axes.set_title(title, fontsize=TITLE_SIZE)
         
         # save the figure to a png file in the `plots` directory
         target_name = self.img_dir + "layers_" + self.d_type + self.add_on
@@ -623,10 +637,6 @@ def combine_plots(data_dict, names_dict, d_type, bar_plot=False, all_d_types=Fal
                 twin_ax.plot(avg_sites, linestyle="--", marker='o', markersize=MARKER_SIZE, color=SITES_COLOR)
             twin_ax.tick_params(axis='y', labelcolor=SITES_COLOR)
             
-            # if x_coord > 0:
-            #     ax.get_shared_y_axes().join(ax, ax_mat[y_coord][x_coord-1][0])
-            #     twin_ax.get_shared_y_axes().join(twin_ax, ax_mat[y_coord][x_coord-1][1])
-            
             # plot the given labels for the x values (i.e. DRAM, etc.)
             tick_list = [i for i in range(len(level_names))]
             ax.set_xticks(tick_list)
@@ -638,10 +648,10 @@ def combine_plots(data_dict, names_dict, d_type, bar_plot=False, all_d_types=Fal
                 twin_ax.set_yticklabels([])
         
             # axes.set_xlabel("Memory Level (larger \u2192 smaller)", fontsize=AXES_SIZE)
-            # axes.set_ylabel("Mean Top-1 Error", fontsize=AXES_SIZE)
+            # axes.set_ylabel("Avg. Top-1 Error", fontsize=AXES_SIZE)
             # axes.set_title(title, fontsize=TITLE_SIZE)
             
-            # plt.ylabel("Mean number of reuse sites", color='tab:blue', fontsize=AXES_SIZE)
+            # plt.ylabel("Avg. number of reuse sites", color='tab:blue', fontsize=AXES_SIZE)
                 
             y_coord += 1
         x_coord += 1

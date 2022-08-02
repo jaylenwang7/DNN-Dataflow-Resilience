@@ -1,9 +1,11 @@
+from xxlimited import Str
 import torch
 import torch
 from torch import nn, Tensor
 import copy
 import bitflip
 from helpers import *
+from typing import Union
 
 # object to inject into a single layer
 class InjectModel(nn.Module):
@@ -180,7 +182,7 @@ class InjectModel(nn.Module):
         self.layer_ind += 1
     
     # set the mode of 
-    def set_mode(self, mode, change_to=1000., bit=-1):
+    def set_mode(self, mode: str, change_to: int=1000., bit: Union[int, range]=-1):
         if mode == "bit":
             assert(bit != -1)
             self.bit = bit
@@ -194,7 +196,7 @@ class InjectModel(nn.Module):
         else:
             assert(False)
             
-    def set_d_type(self, d_type):
+    def set_d_type(self, d_type: str):
         assert(d_type in ['i', 'w', 'o'])
         self.d_type = d_type
             

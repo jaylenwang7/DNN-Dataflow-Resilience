@@ -103,6 +103,10 @@ vit_224_sample_layers = [0, 1, 2, 3, 4, 5, 10, 15, 20, 25, 30, 35, 40, 45, 48, 4
 deit_tiny_sample_layers = vit_224_sample_layers
 
 
+'''
+BELOW ARE HAND-MAPPED DATAFLOW LOOP NESTS FOR NVDLA ON VARIOUS NETWORKS (as opposed to those done by Timeloop)
+'''
+
 def run_nvdla_alexnet(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
@@ -524,6 +528,12 @@ if __name__=="__main__":
     # run_plot('eyeriss', 'alexnet', d_type='i', add_on="")
     # run_plot('eyeriss', 'alexnet', d_type='w', add_on="")
     # run_plot('eyeriss', 'alexnet', d_type='o', add_on="")
+    
+    
+    '''
+    Plots the data collected in a grid form
+    '''
+    # plot_all(d_type='i')
     
     
     pass

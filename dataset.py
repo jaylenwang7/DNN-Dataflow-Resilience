@@ -6,18 +6,27 @@ import os
 import pandas as pd
 
 class ImagenetValidationDataset(Dataset):
+    """PyTorch Dataset wrapper specifically to run for ILSVRC2012 validation set.
+    """    
 
-    def __init__(self, csv_file, root_dir, transform=None, idx_by_name=False):
+    def __init__(self, csv_file: str, root_dir: str, transform: transforms.Compose=None, idx_by_name: bool=False):
+        """Initializes the dataset instance.
+
+        Args:
+            csv_file (str): Relative location of the csv file with the labels.
+            root_dir (str): Relative location of the directory with the images.
+            transform (transforms.Compose, optional): The set of Torchvision transforms to use. Defaults to None.
+            idx_by_name (bool, optional): Sets whether to index the images by name or by number. Defaults to False.
+        """        
         self.image_labels = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
         self.idx_by_name = idx_by_name
 
     def __len__(self):
-        # return len(self.image_labels)
         return len(os.listdir(self.root_dir))
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         # if indices passed as tensors - transform to list
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -43,8 +52,8 @@ class ImagenetValidationDataset(Dataset):
         sample = {'image': image, 'label': label}
         return sample
 
-def get_dataset(csv_file='ImageNet/validation_labels.csv',
-                root_dir='ImageNet/val_images/'):
+def get_dataset(csv_file: str='ImageNet/validation_labels.csv',
+                root_dir: str='ImageNet/val_images/'):
     # standard ImageNet transformations
     preprocess = transforms.Compose([
         transforms.Resize(256),

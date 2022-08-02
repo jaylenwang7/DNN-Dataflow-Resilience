@@ -66,16 +66,23 @@ def get_deit_tiny():
 # of the dataset - return the correct classification rates
 def get_baseline(net, img_inds, dataset):
     net.eval()
+    
     correct = 0
     total = 0
     classifications = []
+    # loop through each img ind provided
     for ind in img_inds:
+        # run img through network
         img = torch.unsqueeze(dataset[ind]['image'], 0)
         res = net(img)
+        
+        # get the top 5 classifications
         _, max_inds = torch.topk(res, 5, 1)
         max_inds = torch.squeeze(max_inds)
         max_inds = max_inds.numpy()
         classifications.append(max_inds)
+        
+        # check if the top 1 confident matches the label (in csv file)
         if max_inds[0] == dataset[ind]['label']:
             correct += 1
         total += 1
