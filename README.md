@@ -12,7 +12,13 @@ The `ImageNet` folder provides a set of validation labels (given in `validation_
 To generate your own mappings for different networks, you will have to install and use [Timeloop](https://github.com/NVlabs/timeloop). Example mappings for NVDLA are provided in `run.py` for a few networks and mapping files (generated from Timeloop) for ResNet18 on Eyeriss are provided within the `timeloop_mappings` folder.
 
 ## Tool High-Level Overview
+![whoops](https://github.com/jaylenwang7/DNN-Dataflow-Resilience/blob/main/figures/framework.jpg)
 
+The tool consists of a frontend and backend. The backend first uses the loop nests provided by the user (which can be produced by Timeloop) as well as the information of the layer sizes (for things like padding and stride) to generate the locations at the output of the layer where an error could propagate. It does this by using the loop nest to see, if an error occurred at some level of memory (flip flop, buffer, DRAM, etc.) how that error would be shared in memory, and thus, propagate to the output. The frontend then 
+
+* The backend implementation is mainly in `loop.py` and `loop_var.py`, which do the loop nest simulation. 
+* The frontend implementation is mainly in `inject_model.py`, which performs the injection through a wrapper of the 
+* The frontend and backend are tied together through `model_injection.py` which makes calls to both (runs the frontend and backend) and also handles data collection.
 
 ## Scripts
 The following are Python scripts that can be run from the command line to spin up the tool (either to run experiments or to validate the tool itself):
@@ -28,6 +34,10 @@ The following are Python scripts that can be run from the command line to spin u
 ## Data Output
 * Injection data (data resulting from a full experiment running through the front and backend) is automatically outputted into a `data_results/` directory. This directory will then have a directory for each architecture, a `plot/` directory for plots that aggregate over all architectures, and a `stats/` directory for statistics that are aggregated over all layers and injections for each network/arch pairing.  
 * Within the arch-specific `data_results/` directory, you will find directories for each network. Within those you can find directories for each layer injected into, which then hold csv files with data for the result of each injection performed. There is also a `log.txt` file which contains outputs for each experiment with what indices/images/etc. were used for future reference. 
+
+## Plotting
+* Plots can be generated through
+* The aggregate stats files are useful for generating plots about statistics such as fault rates for different bits etc. To generate plots, I suggest (as I did to generate figures) opening them with Excel or another spreadsheet tool and generating plots and seeing any trends that way.
 
 
 **NOTE this is a work in progress, so documentation is sparse and there are bugs/improvements that are being made.**

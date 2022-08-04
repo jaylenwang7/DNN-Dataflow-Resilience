@@ -2,8 +2,11 @@ from torch import nn, Tensor
 import torch
 from prettytable import PrettyTable
 from dataset import get_dataset
+from typing import Callable
 
 class LayerInfo():
+    """Base class for a representation of the information of a layer such as sizes of weights, outputs, inputs, etc.
+    """
     def __init__(self, layer, inp, outp):
         self.wshape = tuple(layer.weight.shape)
         self.oshape = tuple(outp.shape)
@@ -69,8 +72,13 @@ class FCInfo(LayerInfo):
         shapes = self.get_shapes()
         return len(shapes[1])
 
-# model wrapper to print layer sizes
 class InfoModel(nn.Module):
+    """Wrapper to get layer information from a PyTorch model.
+
+    Args:
+        nn (nn.Module): PyTorch model to get information from.
+    """
+    
     def __init__(self, model: nn.Module, process_FC=False):
         super().__init__()
         self.model = model
@@ -79,7 +87,7 @@ class InfoModel(nn.Module):
         self.FC_info = []
         self.process_FC = process_FC
         
-        # Register a hook for each layer
+        # register a hook for each layer
         for layer in self.model.modules():
             if isinstance(layer, nn.Conv2d):
                 layer.register_forward_hook(self.hook_conv_info)
@@ -120,12 +128,13 @@ class InfoModel(nn.Module):
     def get_FC_info(self):
         return self.FC_info, self.get_vars(self.FC_info)
     
-def get_layer_info(get_net: callable, img, with_FC=True):
+def get_layer_info(get_net: Callable, img, with_FC: bool=True):
     verb_net = get_net()
     vnet = InfoModel(verb_net, process_FC=with_FC)
     vnet(img)
     layers_info, var_sizes = vnet.get_info()
     num_layers = len(layers_info)
+    
     # vnet.conv_info has the form [weight, output, input, pad, stride] for each layer
     # weight (m, c, s, r), output (1, m, q, p), input (1, c, h, w)
     # var_sizes will have the form [m, c, s, r, q, p, h, w]
@@ -143,7 +152,7 @@ def get_layer_info(get_net: callable, img, with_FC=True):
         
     return num_layers, var_sizes, paddings, strides, FC_types
 
-def print_layer_sizes(net, net_name='', do_print=True, with_FC=True, return_FC=True, return_inc=False):
+def print_layer_sizes(net, net_name='', do_print: bool=True, with_FC: bool=True, return_FC: bool=True, return_inc: bool=False):
     # instantiate a table
     table = PrettyTable()
     if net_name:

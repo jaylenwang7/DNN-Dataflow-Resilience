@@ -1,12 +1,12 @@
 from pathlib import Path
 import helpers
 
-class mem_info():
+class MemInfo():
     def __init__(self, name: str):
         self.name = name
         self.mem_dict = dict(w=False, i=False, o=False)
         
-    def set_dict(self, key):
+    def set_dict(self, key: str):
         assert(key in ['w', 'i', 'o'])
         self.mem_dict[key] = True
         
@@ -16,7 +16,7 @@ class mem_info():
     def get_name(self):
         return self.name
 
-def parse_line(line):
+def parse_line(line: str):
     mem_obj = []
     spatial = False
     var_char = ''
@@ -47,7 +47,7 @@ def parse_line(line):
     # memory line
     else:
         line_words = line.split()
-        mem_obj = mem_info(line_words[0])
+        mem_obj = MemInfo(line_words[0])
         # set whatever memory is contained to true in dict
         if "Weights" in line:
             mem_obj.set_dict('w')
@@ -61,7 +61,7 @@ def parse_line(line):
     
     return line_type, mem_obj, spatial, var_char, size
 
-def parse_map(file_name):
+def parse_map(file_name: str):
     map_file = open(file_name, 'r')
     lines = map_file.readlines()
     
@@ -115,7 +115,7 @@ def parse_map(file_name):
         
     return loops, divs, name_dict
 
-def parse_files(dir, to_parse='**/*.map.txt', debug=False):
+def parse_files(dir: str, to_parse: str='**/*.map.txt', debug: bool=False):
     
     # get list of all txt files in dir
     pathlist = sorted(Path(dir).glob(to_parse), key=helpers.get_str_num)

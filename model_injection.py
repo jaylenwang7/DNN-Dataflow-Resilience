@@ -9,6 +9,7 @@ from pathlib import Path
 from inject_model import InjectModel
 from info_model import *
 from max_model import *
+from typing import Any, List, Tuple
 
 # class for an object that is used to inject into a model (for all the layers of the model)
 class ModelInjection():
@@ -33,7 +34,7 @@ class ModelInjection():
         self.layer_sizes = []                   # list of sizes for each layer (m, p, s, r, etc.)
         self.paddings = []                      # list of padding sizes for each layer
         self.strides = []                       # list of stride lengths for each layer
-        self.FC_sizes = []
+        self.FC_sizes = []                      # 
         self.maxes = maxes                      # list of maxes for each layer (by default empty if already created)
         self.mins = mins                        # list of mins
         self.inject_layers = []                 # list of InjectModel objects (one per layer)
@@ -44,8 +45,8 @@ class ModelInjection():
         self.file_addon = file_addon
 
         self.loops = loops                      # list of loop objects for each layer
-        self.num_mem_levels = 0
-        self.set_mem_levels()
+        self.num_mem_levels = 0                 # number of memory levels for the given arch
+        self.set_mem_levels()                   # set the number of mem levels
         self.set_dtype(d_type)                  # data to inject into (weight, input, output?)
         
         self.overwrite = overwrite              # whether to overwrite the current output data file
@@ -58,17 +59,27 @@ class ModelInjection():
         # get layer objects
         self.get_inject_layers()
 
-    def set_top_dir(self):
+    def set_top_dir(self) -> None:
         top_dir = "data_results/" + self.arch_name + "/" + self.net_name
         self.top_dir = top_dir
         
-    def set_mem_levels(self):
+    def set_mem_levels(self) -> None:
+        """Counts and sets the number of memory levels for the architecture.
+        """
+        
+        # find an existing loop and count the number of mem_inds
         for loop in self.loops:
             if loop != None:
                 self.num_mem_levels = len(loop.mem_inds)
                 return
         
-    def open_files(self, layers=[]):
+    def open_files(self, layers: List[int]=[]) -> None:
+        """Opens all the filenames as set in the filenames param.
+
+        Args:
+            layers (List[int], optional): List of layers to open files for. Defaults to [].
+        """
+        
         # make sure filenames have been populated
         assert(self.filenames)
         for i in layers:
@@ -86,9 +97,16 @@ class ModelInjection():
                     fields = self.fields
                     csvwriter.writerow(fields)
         
-    # open and collect the filenames for each layer
-    def get_filenames(self, file_addon, layers=[]):
+    def get_filenames(self, file_addon: str, layers: List[int]=[]) -> None:
+        """Sets the filenames param - giving each layer a directory to operate out of and a csv file to output data into.
+
+        Args:
+            file_addon (str): An addon to add onto the default naming convention of the csv files.
+            layers (List[int], optional): List of layers to set the filenames for. Defaults to [].
+        """        
+        
         print("Getting filenames...")
+        # if no layers given, use all layers
         if not layers:
             layers = range(self.num_layers)
 
@@ -112,18 +130,23 @@ class ModelInjection():
             if not self.overwrite:
                 filename, file_num = get_new_filename(filename)
                 addon = max(file_num, addon)
-            else:
+            else: # if overwrite just set filename
                 filename += ".csv"
                 self.filenames[i] = filename
         
+        # if no overwrite - change filenames to new ones
         if not self.overwrite:
+            # -1 means no addon
             if addon == -1:
                 addon = ""
+            
+            # loop through layers and set filenames with addon to not overwrite
             for i in layers:
                 # add name to list of filenames
                 self.filenames[i] = temp_filenames[i] + str(addon) + ".csv"
 
-    def set_log_file(self):
+    # sets the log file name
+    def set_log_file(self) -> None:
         # open a log file
         p = Path(self.top_dir)
         p.mkdir(parents=True, exist_ok=True)
@@ -132,14 +155,15 @@ class ModelInjection():
         if not exists(self.log_file) or self.overwrite:
             open(self.log_file, 'w', newline='')
 
-    def log(self, to_log):
+    # logs something to the log file
+    def log(self, to_log: Any) -> None:
         if not self.log_file:
             self.set_log_file()
         with open(self.log_file, 'a', newline='') as f: 
             f.write(str(to_log) + "\n") 
 
-    # get InjectModel objects and their maxes (if not given)
-    def get_inject_layers(self):
+    # gets InjectModel objects for each layer and their maxes (if not given)
+    def get_inject_layers(self) -> None:     
         # if user doesn't pass in - get the maxes
         if not self.maxes and self.max_range:
             # get max values for each layer
@@ -164,9 +188,8 @@ class ModelInjection():
             # add to list of inject layers
             self.inject_layers.append(inject_layer)
 
-
     # sets the data type to inject into - checks one of i, w, o
-    def set_dtype(self, d_type):
+    def set_dtype(self, d_type: str) -> None:
         assert(d_type in self.d_types)
         self.d_type = d_type
         if d_type == 'i':
@@ -178,12 +201,12 @@ class ModelInjection():
         else:
             assert(False and "Invalid dtype")
 
-    # returns the current path to the filename - constructed from class parameters
-    def get_filename(self, layer_id):
+    # returns the filename for the given layer (from layer_id).
+    def get_filename(self, layer_id: int) -> str:    
         return self.filenames[layer_id]
 
     # get information for all layers (gets sizes, padding, stride, etc.)
-    def get_layer_info(self):
+    def get_layer_info(self) -> None:      
         print("Getting layer info...")
         num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(self.get_net, self.dataset[0]['image'])
         self.num_layers = num_layers
@@ -192,7 +215,8 @@ class ModelInjection():
         self.strides = strides
         self.FC_sizes = FC_sizes
 
-    def check_sites(self, sites, layer_id, inj_ind):
+    # debugging function that checks whether 
+    def check_sites(self, sites, layer_id: int, inj_ind) -> None:
         # order: m c s r q p h w
         layer_size = self.layer_sizes[layer_id]
         m, c, s, r, q, p, h, w = layer_size
@@ -299,7 +323,7 @@ class ModelInjection():
         if is_FC:
             FC_size = inject_layer.get_FC_size()
             
-        def get_nonzero_ind(inj_tup, start_from:int=1):
+        def get_nonzero_ind(inj_tup, start_from: int=1) -> int:
             # find first non-zero value after start_from
             for i in range(start_from, len(inj_tup)):
                 if inj_tup[i] != 0:
@@ -389,6 +413,7 @@ class ModelInjection():
         
         # keep looping until you've gotten all samples or sampled everything
         while len(samples) < num_imgs:
+            # if you've sampled all images, then print warning and stop
             if num_sampled == dataset_len:
                 print("Not enough correct images in dataset to get sample, using " + str(len(samples)) + " instead")
                 break

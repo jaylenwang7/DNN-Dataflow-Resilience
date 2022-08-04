@@ -140,6 +140,10 @@ test_stuff.py
 debug*.txt
 random*.py
 *-test.py
+*.bashrc
+*.bash_history
+*.profile
+*.python_history
 
 # Pickle files
 *.pickle
