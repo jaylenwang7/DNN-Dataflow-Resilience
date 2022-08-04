@@ -382,42 +382,83 @@ def pick_level_names(arch_name:str, d_type:str='i'):
     return mem_levels
     
     
-def run_injection(get_net:Callable, model_name:str, arch_name:str, d_type:str="i", layers:List=[], inj_inds:List=[], loops:List=[], overwrite:bool=False, print_loops:bool=False):
+def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], overwrite: bool=False, print_loops: bool=False):
+    """Function to run an injection experiment with the given network and arch. See README for how the data is outputted. 
+
+    Args:
+        get_net (Callable): Function that returns network to inject into.
+        model_name (str): Name of the model/network - NOTE: this must match the name of the directory within timeloop_maps.
+        arch_name (str): Name of the arch - NOTE: this must match the name of the directory within timeloop_maps.
+        d_type (str, optional): Data type to inject into (input, output, weight - use first letter). Defaults to "i".
+        layers (List, optional): List of layers to inject into, if empty injects into all layers. Defaults to [].
+        inj_inds (List, optional): List of injection indices to inject into (each one is a tuple). If empty, random indices are chosen. Defaults to [].
+        overwrite (bool, optional): Sets whether to overwrite previous output data files. Defaults to False.
+        print_loops (bool, optional): Sets whether to print out the loops - useful for debugging. Defaults to False.
+    """
+    # get a dataset object and then get info about the layers of the model
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
-    
     num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, dataset[0]['image'])
     
+    # get the loops from the timeloop_maps file
     loops, names = get_loops(get_net, 'timeloop_maps/' + arch_name + '/' + model_name + '/', var_sizes, paddings, strides, d_type=d_type, layers=layers)
     if print_loops:
         for loop in loops:
             print(loop)
         assert(False)
     
+    # debug should be set for all data to be collected
     debug = True
+    
+    # get the maxes and mins that have already been generated (can comment out if you want to generate own)
     maxes, mins = pick_maxmin(model_name)
     
+    # start the injection by creating a ModelInjection and then running full_inject
     mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, overwrite=overwrite, debug=debug, d_type=d_type, max_range=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=pick_img_inds(model_name), debug=debug, inj_sites=inj_inds, layers=layers)
     print(correct_rate)
     
 
-def get_network_max(get_net, get_dataset, n=1000):
+def get_network_max(get_net: Callable, get_dataset: Callable, n: int=1000):
+    """Gets the max and min values of the network at each layer and prints/returns them.
+
+    Args:
+        get_net (Callable): Function that returns an eval mode network.
+        get_dataset (Callable): Function that returns a dataset object.
+        n (int, optional): Number of validation images to run through. Defaults to 1000.
+    """    
     net = get_net()
     dataset = get_dataset(csv_file=IMAGENET_LABELS_PATH, root_dir=IMAGENET_IMGS_PATH)
     maxes, mins = get_range(net, dataset, n=n)
+    
     print(maxes)
     print(mins)
     
-    
-def get_resnet18_max_img(img):
-    net = get_resnet18()
-    maxes, mins = get_range_img(net, img)
-    print(maxes)
-    print(mins)
+    return maxes, mins
     
 
-def run_plot(arch_name, net_name, correlate=False, add_on='', d_type='i', layers=[], correct_rate=1.0, xentropy=False, plot_levels=False,
-             sparsity=False, num_sites=False, maxes_mins=False, sites_ratio=False, plot_all=False, threshold=-1, no_plot=False, data_all=False, overwrite=True):
+def run_plot(arch_name: str, net_name: str, correlate: bool=False, add_on: str='', d_type: str='i', layers: List=[], xentropy: bool=False, plot_levels: bool=False,
+             sparsity: bool=False, num_sites: bool=False, maxes_mins: bool=False, sites_ratio: bool=False, plot_all: bool=False, threshold=-1, no_plot: bool=False, data_all: bool=False, overwrite: bool=True):
+    """Once run_injection is used, this function can be run to plot the data that was output. The resulting pltos can be found in the data_results/ directory in plot/ directories. 
+
+    Args:
+        arch_name (str): Name of the architecture.
+        net_name (str): Name of the network/model.
+        correlate (bool, optional): Whether to get correlation data and plot the matrices. Defaults to False.
+        add_on (str, optional): Whether there was any add on to the default output file names. Defaults to ''.
+        d_type (str, optional): Data type to plot. Defaults to 'i'.
+        layers (List, optional): Layers to include in the plot - if none given, all layers will be plotted. Defaults to [].
+        xentropy (bool, optional): Whether to plot using cross-entropy loss rather than accuracy. Defaults to False.
+        plot_levels (bool, optional): Plot with the levels on the x-axis (rather than layers) and aggregate over all layers. Defaults to False.
+        sparsity (bool, optional): Overlay plot with sparsity rate for each layer. Defaults to False.
+        num_sites (bool, optional): Overlay plot with number of sites for each layer. Defaults to False.
+        maxes_mins (bool, optional): Overlay plot with maxes/mins for each layer. Defaults to False.
+        sites_ratio (bool, optional): Overlay plot with ratio of error sites to possible error sites for each layer. Defaults to False.
+        plot_all (bool, optional): Sets all overlays to true and generates all possible overlay plots. Defaults to False.
+        threshold (int, optional): Threshold to collect threshold error rate data. If -1, then it defaults to 2.0. Defaults to -1.
+        no_plot (bool, optional): Doesn't plot anything but just produces data and correlation matrices. Defaults to False.
+        data_all (bool, optional): Produces all possible data and correlation matrices. Defaults to False.
+        overwrite (bool, optional): Overwrites any existing plots and data files. If false, new files with different names are used. Defaults to True.
+    """    
     mem_levels = pick_level_names(arch_name, d_type=d_type)
         
     maxmin = pick_maxmin(net_name)
@@ -446,7 +487,7 @@ def run_plot(arch_name, net_name, correlate=False, add_on='', d_type='i', layers
         plotter.plot_v2(level_names=mem_levels, xentropy=xentropy, sparsity=sparsity, num_sites=num_sites, maxes_mins=maxes_mins, sites_ratio=sites_ratio)
 
 
-def plot_all(d_type = 'i'):
+def plot_all(d_type: str = 'i'):
     arch_names = ["eyeriss", "nvdla", "simba"]
     net_names = ["alexnet", "deit_tiny", "efficientnet_b0", "resnet18"]
     
