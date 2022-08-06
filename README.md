@@ -36,7 +36,7 @@ The following are Python scripts that can be run from the command line to spin u
 * Within the arch-specific `data_results/` directory, you will find directories for each network. Within those you can find directories for each layer injected into, which then hold csv files with data for the result of each injection performed. There is also a `log.txt` file which contains outputs for each experiment with what indices/images/etc. were used for future reference. 
 
 ## Plotting
-* Plots can be generated through
+* Plots can be generated through using the `Plotter` object in `Plotter.py`. 
 * The aggregate stats files are useful for generating plots about statistics such as fault rates for different bits etc. To generate plots, I suggest (as I did to generate figures) opening them with Excel or another spreadsheet tool and generating plots and seeing any trends that way.
 
 

@@ -273,7 +273,7 @@ class Plotter():
         plt.savefig(get_name(target_name, overwrite=self.overwrite))
         plt.close('all')
     
-    # fields used for stats files
+    # fields used for stats files - NOTE: SEE README FOR DESCRIPTIONS OF STATS
     fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "NonZeroRate", "ZeroRate", "NumNonZero", "NumZero", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8", "NumSamples"]
     def collect_stats(self, thresh=2.0):
         all_dfs = []
