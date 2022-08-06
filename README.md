@@ -33,7 +33,7 @@ The following are Python scripts that can be run from the command line to spin u
 
 ## Data Output
 * Injection data (data resulting from a full experiment running through the front and backend) is automatically outputted into a `data_results/` directory. This directory will then have a directory for each architecture, a `plot/` directory for plots that aggregate over all architectures, and a `stats/` directory for statistics that are aggregated over all layers and injections for each network/arch pairing.  
-* Within the arch-specific `data_results/` directory, you will find directories for each network. Within those you can find directories for each layer injected into, which then hold csv files with data for the result of each injection performed. There is also a `log.txt` file which contains outputs for each experiment with what indices/images/etc. were used for future reference. 
+* Within the arch-specific `data_results/` directory, you will find directories for each network. Within those you can find directories for each layer injected into, which then hold csv files with data for the result of each injection performed. There is also a `log.txt` file which contains outputs for each experiment with what indices/images/etc. were used for future reference.
 
 ## Plotting
 * Plots can be generated through using the `Plotter` object in `Plotter.py`. 
