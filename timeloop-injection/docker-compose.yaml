@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  labs:
+    hostname: labs
+    image: mitdlh/timeloop-accelergy-pytorch:latest
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./workspace:/home/workspace
+    environment:
+      - USER_UID=501
+      - USER_GID=501

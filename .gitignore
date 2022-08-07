@@ -151,4 +151,9 @@ random*.py
 # Scalene
 profile.json
 
-timeloop-injection/
+# Timeloop
+.cache/
+.jupyter/
+.local/
+.ipython/
+.config/

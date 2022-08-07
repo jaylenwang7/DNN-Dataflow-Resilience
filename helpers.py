@@ -56,7 +56,6 @@ def get_vit():
     return net
 
 def get_deit_tiny():
-    # net = timm.create_model("vit_small_patch16_224_dino", pretrained=True)
     net = torch.hub.load('facebookresearch/deit:main', 'deit_tiny_patch16_224', pretrained=True)
     net.eval()
     return net
