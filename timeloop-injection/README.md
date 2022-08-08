@@ -2,13 +2,14 @@
 
 ### To Start
 
-1. Run
+1. Make sure Docker is installed and running locally, then cd into this directory (`timeloop-injection/`).
+2. Run
 
         docker-compose pull
         docker-compose up
 
-2. You should see two links to paste into a browser - use whichever one works (often the second one works the best).
-3. This should take you to a Jupyter Notebook environment where you can start working by opening `network-profile.ipynb`.
+3. You should see two links to paste into a browser - use whichever one works (often the second one works the best).
+4. This should take you to a Jupyter Notebook environment where you can start working by opening `network-profile.ipynb`.
 
 ### Included Files/Directories
 * `network-profile.ipynb`: Python notebook that provides the boiler plate code to run Timeloop and perform mappings. Requires very little code to write and just need to change some variables. See the notebook for more details.

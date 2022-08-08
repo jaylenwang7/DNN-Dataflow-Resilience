@@ -31,6 +31,9 @@ The following are Python scripts that can be run from the command line to spin u
 
 * `backend_test.py` contains tests used to specifically test the backend infrastructure. These tests include injections into specific locations, and the output sites then get outputted to a `data_results/` directory where they can be checked against the expected output. For NVDLA, this was done by hand, where the output sites as sited by FIdelity were checked by hand for each memory level. Likewise, this was done for Eyeriss as well, where the test can be run to verify that injections into the input result in a row of the output window being affected - and the results of injections not verified in the paper also fall in line with expectation with an understanding of the Eyeriss dataflow.
 
+## Running Timeloop
+For more information on running Timeloop please see the README in the `timeloop-injection` directory.
+
 ## Data Output
 * Injection data (data resulting from a full experiment running through the front and backend) is automatically outputted into a `data_results/` directory. This directory will then have a directory for each architecture, a `plot/` directory for plots that aggregate over all architectures, and a `stats/` directory for statistics that are aggregated over all layers and injections for each network/arch pairing.  
 * Within the arch-specific `data_results/` directory, you will find directories for each network. Within those you can find directories for each layer injected into, which then hold csv files with data for the result of each injection performed. There is also a `log.txt` file which contains outputs for each experiment with what indices/images/etc. were used for future reference.
