@@ -3,7 +3,8 @@ version: '3'
 services:
   labs:
     hostname: labs
-    image: mitdlh/timeloop-accelergy-pytorch:latest
+    image: jaylenwang/timeloop-injection:latest
+    # image: fb5752be38c6
     ports:
       - "8888:8888"
     volumes:

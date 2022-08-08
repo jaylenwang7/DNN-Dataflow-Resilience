@@ -10,6 +10,7 @@ from torchprofile import profile_macs
 from torchvision.models.resnet import BasicBlock
 from tqdm import tqdm
 from pathlib import Path
+from datetime import date
 
 
 def count_activation_size(net, input_size=(1, 3, 224, 224), require_backward=False, activation_bits=32):
@@ -145,27 +146,27 @@ def profile_memory_cost(net, input_size=(1, 3, 224, 224), require_backward=False
 
 class Profiler(object):
     def __init__(self,
-                 sub_dir,
-                 top_dir,
-                 timeloop_dir,
+                 net_name,
+                 arch_name,
                  model,
                  input_size,
                  batch_size,
                  convert_fc,
-                 profiled_lib_dir,
                  exception_module_names=None
                  ):
         self.base_dir = Path(os.getcwd())
-        self.sub_dir = sub_dir
-        self.top_dir = top_dir
+        self.sub_dir = date.today().strftime("%b-%d-%Y")
+        self.top_dir = '/'.join(['networks', net_name])
         self.model = model
-        self.timeloop_dir = timeloop_dir
+        self.timeloop_dir = '/'.join(['archs', arch_name])
+        self.arch_name = arch_name
+        self.net_name = net_name
         self.input_size = input_size
         self.batch_size = batch_size
         self.convert_fc = convert_fc
         self.exception_module_names = exception_module_names
 
-        self.profiled_lib_dir = profiled_lib_dir
+        self.profiled_lib_dir = '/'.join(['.', self.timeloop_dir, 'profiled_lib.json'])
         self.profiled_lib = {}
         self.load_profiled_lib()
 
@@ -173,9 +174,6 @@ class Profiler(object):
         if os.path.exists(self.profiled_lib_dir):
             with open(self.profiled_lib_dir, 'r') as fid:
                 self.profiled_lib = json.load(fid)
-        else:
-            p = Path(self.profiled_lib_dir)
-            p.mkdir(parents=True, exist_ok=True)
 
     def write_profiled_lib(self):
         with open(self.profiled_lib_dir, 'w') as fid:
@@ -217,8 +215,7 @@ class Profiler(object):
                     }
 
         # check the mapper info
-        with open(self.base_dir/self.timeloop_dir/'mapper/mapper.yaml',
-                  'r') as fid:
+        with open(self.base_dir/self.timeloop_dir/'mapper/mapper.yaml', 'r') as fid:
             mapper_dict = yaml.safe_load(fid)
             for layer_id, info in layer_info.items():
                 layer_info[layer_id]['mapper_timeout'] = mapper_dict['mapper']['timeout']
@@ -238,6 +235,7 @@ class Profiler(object):
                         info['mapper_victory_condition'] == profiled_info['mapper_victory_condition'] and \
                         info['mapper_max_permutations'] ==  profiled_info['mapper_max_permutations']:
 
+                    print(f"Found layer {layer_id} in the profiled library of layers")
                     layer_info[layer_id]['energy'] = profiled_info['energy']
                     layer_info[layer_id]['area'] = profiled_info['area']
                     layer_info[layer_id]['cycle'] = profiled_info['cycle']
@@ -245,11 +243,17 @@ class Profiler(object):
 
         # run timeloop
         print(f'running timeloop to get energy and latency...')
+        
+        timeloop_layer_dir = self.base_dir/self.timeloop_dir/'profiled_networks'/self.net_name/self.sub_dir
+        # if not os.path.exists(timeloop_layer_dir):
+        #     p = Path(timeloop_layer_dir)
+        #     p.mkdir(parents=True, exist_ok=True)
+            
         for layer_id in layer_info.keys():
-            os.makedirs(self.base_dir/self.timeloop_dir/self.sub_dir/f'layer{layer_id}', exist_ok=True)
+            os.makedirs(timeloop_layer_dir + '/' + f'layer{layer_id}', exist_ok=True)
 
         def get_cmd(layer_id):
-            cwd = f"{self.base_dir/self.timeloop_dir/self.sub_dir/f'layer{layer_id}'}"
+            cwd = timeloop_layer_dir + '/' + f'layer{layer_id}'
             if 'M' in layer_info[layer_id]['layer_dict']['problem']['instance']:
                 constraint_pth = self.base_dir/self.timeloop_dir/'constraints/*.yaml'
             else:
@@ -257,7 +261,7 @@ class Profiler(object):
                 constraint_pth = self.base_dir/self.timeloop_dir/'constraints_dw/*.yaml'
 
             timeloopcmd = f"timeloop-mapper " \
-                          f"{self.base_dir/self.timeloop_dir/'arch/simple_weight_stationary.yaml'} " \
+                          f"{self.base_dir/self.timeloop_dir/'arch'}" + "/" + f"{self.arch_name}.yaml " \
                           f"{self.base_dir/self.timeloop_dir/'arch/components/*.yaml'} " \
                           f"{self.base_dir/self.timeloop_dir/'mapper/mapper.yaml'} " \
                           f"{constraint_pth} " \
@@ -283,7 +287,7 @@ class Profiler(object):
             if 'energy' in layer_info[layer_id].keys():
                 # the layer is in the profiler lib
                 continue
-            with open(self.base_dir/self.timeloop_dir/self.sub_dir/f'layer{layer_id}'/f'timeloop-mapper.stats.txt', 'r') as fid:
+            with open('/'.join([timeloop_layer_dir, f'layer{layer_id}', f'timeloop-mapper.stats.txt']), 'r') as fid:
                 lines = fid.read().split('\n')[-200:]
                 for line in lines:
                     if line.startswith('Total topology energy'):
@@ -330,25 +334,3 @@ class Profiler(object):
         #overall['activation_size'] = count_activation_size(self.model, [1] + list(self.input_size))
 
         return layer_info, overall
-
-
-def test():
-    import pdb
-    import torchvision
-
-    pdb.set_trace()
-    profiler = Profiler(
-        top_dir='workloads',
-        sub_dir='alexnet',
-        timeloop_dir='simple_weight_stationary',
-        model=torchvision.models.alexnet(),
-        input_size=(3, 224, 224),
-        batch_size=1,
-        convert_fc=True,
-        exception_module_names=[]
-    )
-    profiler.profile()
-
-
-if __name__=='__main__':
-    test()
