@@ -1,5 +1,7 @@
 from pathlib import Path
 import helpers
+import shutil
+from os.path import exists
 
 class MemInfo():
     def __init__(self, name: str):
@@ -121,7 +123,8 @@ def parse_files(dir: str, to_parse: str='**/*.map.txt', debug: bool=False):
     pathlist = sorted(Path(dir).glob(to_parse), key=helpers.get_str_num)
     if not pathlist:
         assert(False and "check provided arch/model names are correct and directory structure")
-        
+    
+    # get the layer number as specified by the file name
     layer_ids = [int(str(path).split('layer')[1].split('.')[0])-1 for path in pathlist]
     
     all_loops = {}
@@ -145,4 +148,25 @@ def parse_files(dir: str, to_parse: str='**/*.map.txt', debug: bool=False):
             print("Names: " + str(all_names[i]) + "\n")
         
     return all_loops, all_divs, all_names
+
+def move_maps(arch_name: str, model_name: str, map_dir: str):
+
+    overwrite = False
+
+    dir = 'timeloop-injection/workspace/archs/' + arch_name + '/profiled_networks' + map_dir
+    newdir = 'timeloop_maps/' + arch_name + '/' + model_name + '/'
+    to_parse='**/*.map.txt'
+
+    p = Path(newdir)
+    p.mkdir(parents=True, exist_ok=True)
+
+    pathlist = sorted(Path(dir).glob(to_parse), 
+                      key=helpers.get_str_num)
+
+    for f in pathlist:
+        layer_num = str(f).split('layer')[1].split('/')[0]
+        newfile = newdir + 'layer' + layer_num + '.map.txt'
+        if not exists(newfile) or overwrite:
+            print("Writing to: " + str(newfile))
+            shutil.copy(f, newfile)
                 

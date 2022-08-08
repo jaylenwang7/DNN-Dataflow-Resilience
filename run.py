@@ -4,6 +4,7 @@ from info_model import *
 from loop import Loop
 from model_injection import ModelInjection
 from plotter import Plotter, combine_plots
+from parser import move_maps
 from max_model import *
 from typing import Callable, List
 
@@ -326,7 +327,11 @@ def run_nvdla_deit_tiny(d_type:str, layers=[]):
     mod_inj = ModelInjection(get_net, dataset, 'deit_tiny', 'nvdla', loops, maxes=DEIT_TINY_MAX, mins=DEIT_TINY_MIN, overwrite=False, debug=debug, d_type=d_type, max_range=True)
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=sample_deit_tiny_correct_img_inds, debug=debug, inj_sites=inj_inds, layers=layers)
     
-    
+
+'''
+BELOW ARE FUNCTIONS THAT AUTOMATICALLY RETURN MODEL/ARCH-SPECIFIC DATA 
+(such as maxmins/sample imgs) FROM THE NAME OF THE MODEL/ARCH
+'''
 def pick_maxmin(model_name:str):
     if model_name == "resnet18":
         return (RESNET18_MAX, RESNET18_MIN)
@@ -382,7 +387,7 @@ def pick_level_names(arch_name:str, d_type:str='i'):
     return mem_levels
     
     
-def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], overwrite: bool=False, print_loops: bool=False):
+def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], overwrite: bool=False, print_loops: bool=False, map_dir: str=""):
     """Function to run an injection experiment with the given network and arch. See README for how the data is outputted. 
 
     Args:
@@ -394,10 +399,15 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
         inj_inds (List, optional): List of injection indices to inject into (each one is a tuple). If empty, random indices are chosen. Defaults to [].
         overwrite (bool, optional): Sets whether to overwrite previous output data files. Defaults to False.
         print_loops (bool, optional): Sets whether to print out the loops - useful for debugging. Defaults to False.
+        map_dir (str, optional): The directory where Timeloop has outputted layer mappings into. If this is set, layer mappings will be copied into `timeloop_maps` for automatic file parsing.
     """
     # get a dataset object and then get info about the layers of the model
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, dataset[0]['image'])
+    
+    # copy map files into the timeloop-maps directory if desired
+    if map_dir:
+        move_maps(arch_name, model_name, map_dir)
     
     # get the loops from the timeloop_maps file
     loops, names = get_loops(get_net, 'timeloop_maps/' + arch_name + '/' + model_name + '/', var_sizes, paddings, strides, d_type=d_type, layers=layers)
