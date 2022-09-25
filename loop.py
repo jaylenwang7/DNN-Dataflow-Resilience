@@ -345,7 +345,6 @@ class Loop():
     # index is the index of the injection location
     # GET THE WINDOW AT THE OUTPUT OF THE 'd_type' MEMORY AT 'index'
     def set_window(self, index):
-        print("Setting window...")
         # if weight
         if self.d_type == 'w':
             # return ranges

@@ -4,13 +4,13 @@ from info_model import *
 from loop import Loop
 from model_injection import ModelInjection
 from plotter import Plotter, combine_plots
-from parser import move_maps
+from parser import *
 from max_model import *
 from typing import Callable, List
 
 
-IMAGENET_IMGS_PATH = '../loop-injection/ILSVRC2012_img_val/'
-IMAGENET_LABELS_PATH = '../loop-injection/LOC_val_solution.csv'
+IMAGENET_IMGS_PATH = "./ImageNet/val_images"
+IMAGENET_LABELS_PATH = "./ImageNet/validation_labels.csv"
 
 '''
 BELOW ARE 100 IMAGES (ImageNet images) CORRECTLY IDENTIFIED BY NETWORKS
@@ -112,7 +112,7 @@ def run_nvdla_alexnet(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_alexnet, dataset[0]['image'])
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_alexnet, dataset[0]['images'])
 
     # get the loop objects
     loops = []
@@ -148,7 +148,7 @@ def run_nvdla_resnet18(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_resnet18, dataset[0]['image'])
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_resnet18, dataset[0]['images'])
 
     # get the loop objects
     loops = []
@@ -199,7 +199,7 @@ def run_nvdla_efficientnet_b0(d_type:str, layers=[]):
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     
     get_net = get_efficientnet_b0
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['image'])
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['images'])
 
     # get the loop objects
     loops = []
@@ -294,7 +294,7 @@ def run_nvdla_deit_tiny(d_type:str, layers=[]):
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
     
     get_net = get_deit_tiny
-    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['image'])
+    num_layers, var_sizes, paddings, strides, _ = get_layer_info(get_net, dataset[0]['images'])
 
     # get the loop objects
     loops = []
@@ -387,7 +387,9 @@ def pick_level_names(arch_name:str, d_type:str='i'):
     return mem_levels
     
     
-def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], overwrite: bool=False, print_loops: bool=False, map_dir: str=""):
+def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], 
+                  overwrite: bool=False, print_loops: bool=False, map_dir: str="", num_imgs=-1, label_path: str="", img_path: str="", 
+                  timeloop_map_dir="", out_dir="", use_cpu=False, batch_size=1, img_inds=[], add_on=""):
     """Function to run an injection experiment with the given network and arch. See README for how the data is outputted. 
 
     Args:
@@ -402,15 +404,24 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
         map_dir (str, optional): The directory where Timeloop has outputted layer mappings into. If this is set, layer mappings will be copied into `timeloop_maps` for automatic file parsing.
     """
     # get a dataset object and then get info about the layers of the model
-    dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
-    num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, dataset[0]['image'])
+    if not label_path:
+        label_path = IMAGENET_LABELS_PATH
+    if not img_path:
+        img_path = IMAGENET_IMGS_PATH
+    dataset = get_dataset(label_path, img_path)
+    num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, dataset[0]['images'])
     
     # copy map files into the timeloop-maps directory if desired
     if map_dir:
         move_maps(arch_name, model_name, map_dir)
     
     # get the loops from the timeloop_maps file
-    loops, names = get_loops(get_net, 'timeloop_maps/' + arch_name + '/' + model_name + '/', var_sizes, paddings, strides, d_type=d_type, layers=layers)
+    if not timeloop_map_dir:
+        timeloop_map_dir = "timeloop_maps"
+    timeloop_map_dir += '/' + arch_name + '/' + model_name + '/'
+    def get_data():
+        return get_dataset(label_path, img_path)
+    loops, names = get_loops(get_net, timeloop_map_dir, var_sizes, paddings, strides, get_data, d_type=d_type, layers=layers)
     if print_loops:
         for loop in loops:
             print(loop)
@@ -421,10 +432,17 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
     
     # get the maxes and mins that have already been generated (can comment out if you want to generate own)
     maxes, mins = pick_maxmin(model_name)
+    if not img_inds:
+        if num_imgs != -1:
+            img_inds = []
+        else:
+            img_inds = pick_img_inds(model_name)
     
     # start the injection by creating a ModelInjection and then running full_inject
-    mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, overwrite=overwrite, debug=debug, d_type=d_type, max_range=True)
-    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=pick_img_inds(model_name), debug=debug, inj_sites=inj_inds, layers=layers)
+    mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, 
+                             overwrite=overwrite, debug=debug, d_type=d_type, max_range=True, 
+                             batch_size=batch_size, top_dir=out_dir, file_addon=add_on)
+    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, layers=layers, num_imgs=num_imgs)
     print(correct_rate)
     
 
@@ -568,9 +586,9 @@ if __name__=="__main__":
     '''
     Automatically constructs the loops from given mappings and runs an injection experiment
     '''
-    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="i")
-    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="w")
-    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="o")
+    run_injection(get_alexnet, "alexnet", "eyeriss", d_type="i", num_imgs=20)
+    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="w", num_imgs=20)
+    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="o", num_imgs=20)
     
     
     '''

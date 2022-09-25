@@ -7,7 +7,7 @@ To start:
 2. Install all necessary dependencies using `pip install -r requirements.txt`.
 3. To run an Eyeriss or NVDLA example test, see `run.py`, which will output data to a folder called `data_results`. To run tests on either the frontend or backend, see `backend_test.py` and `frontend_test.py`.
 
-The `ImageNet` folder provides a set of validation labels (given in `validation_labels.csv`) and a set of 100 images in the ImageNet 2012 validation dataset. To use a different dataset, see `dataset.py` for more details. 
+The `ImageNet` folder provides a set of validation labels (given in `validation_labels.csv`) and a set of 100 images in the ImageNet 2012 validation dataset. To use a different dataset, see `dataset.py` for more details. To download the whole ImageNet 2012 dataset, we would recommend downloading from [the image-net website](https://image-net.org/challenges/LSVRC/2012/2012-downloads.php) - you will have to make an account.
 
 To generate your own mappings for different networks, you will have to install and use [Timeloop](https://github.com/NVlabs/timeloop). Example mappings for NVDLA are provided in `run.py` for a few networks and mapping files (generated from Timeloop) for ResNet18 on Eyeriss are provided within the `timeloop_mappings` folder.
 

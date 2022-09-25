@@ -54,12 +54,12 @@ def get_range(net_max, dataset, n=1000, stds=False):
     new_net_max = MaxModel(net_max)
 
     # sample up to total number of images in the dataset
-    n = min(n ,len(dataset))
+    n = min(n, len(dataset))
     sample_inds = random.sample(range(0, len(dataset)), n)
 
     print("Getting max...")
     for i in trange(n):
-        img = torch.unsqueeze(dataset[sample_inds[i]]['image'], 0)
+        img = dataset[sample_inds[i]]['images']
         new_net_max(img)
         new_net_max.reset_conv_id()
         

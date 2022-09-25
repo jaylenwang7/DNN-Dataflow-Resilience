@@ -1,6 +1,5 @@
 from xxlimited import Str
 import torch
-import torch
 from torch import nn, Tensor
 import copy
 import bitflip
@@ -33,9 +32,12 @@ class InjectModel(nn.Module):
         self.out_min = 0
         self.is_FC = False
         self.FC_size = -1
+        self.device = ""
         
         # set what type of injection based on user input
         self.set_d_type(d_type)
+        # set device to run on
+        self.set_device()
 
         # register a hook for each layer
         with torch.no_grad():
@@ -45,13 +47,18 @@ class InjectModel(nn.Module):
                     if num_layer == layer_id:
                         if isinstance(layer, (nn.Linear)):
                             self.is_FC = True
-                        self.layer = copy.deepcopy(layer)
+                        self.layer = copy.deepcopy(layer).to(self.device)
                         self.layer.weight.requires_grad = False
                         layer.register_forward_hook(self.inject)
                     else:
                         layer.register_forward_hook(self.compare)
                     num_layer += 1
             self.num_layer = num_layer
+        
+    def set_device(self):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device
+        self.model.to(device)
             
     def get_is_FC(self):
         return self.is_FC
@@ -94,6 +101,7 @@ class InjectModel(nn.Module):
         self.pre_value = value.detach().clone()
         
         # change the value depending on the mode
+        value = value.to(self.device)
         if self.mode == 0:
             value = bitflip.flip_bit(value, self.bit)
         elif self.mode == 1:
@@ -116,7 +124,8 @@ class InjectModel(nn.Module):
         #   5. add a copy of the output to the list of conv outputs
         
         # 1 ===========
-        input_tensor = input_value[0].clone().detach()
+        input_tensor = input_value[0].clone().detach().to(self.device)
+        batch_size = input_tensor.shape[0]
         
         # if injecting into input - need to do this online during the hook
         if self.d_type == 'i':
@@ -284,7 +293,8 @@ class InjectModel(nn.Module):
         
         if self.d_type == 'w':
             self.inject_weight(self.inj_coord)
-            
+        
+        test_img = test_img.to(self.device)
         with torch.no_grad():
             out = self.forward(test_img)
 

@@ -9,7 +9,7 @@ class ImagenetValidationDataset(Dataset):
     """PyTorch Dataset wrapper specifically to run for ILSVRC2012 validation set.
     """    
 
-    def __init__(self, csv_file: str, root_dir: str, transform: transforms.Compose=None, idx_by_name: bool=False):
+    def __init__(self, csv_file: str, root_dir: str, img_prefix: str, transform: transforms.Compose=None, idx_by_name: bool=False):
         """Initializes the dataset instance.
 
         Args:
@@ -22,11 +22,12 @@ class ImagenetValidationDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.idx_by_name = idx_by_name
+        self.img_prefix = img_prefix
 
     def __len__(self):
         return len(os.listdir(self.root_dir))
-
-    def __getitem__(self, idx: int):
+    
+    def get_idx(self, idx: int):
         # if indices passed as tensors - transform to list
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -35,7 +36,7 @@ class ImagenetValidationDataset(Dataset):
         if self.idx_by_name:
             img_idx = str(idx+1).zfill(8)
             img_name = os.path.join(self.root_dir,
-                                    "ILSVRC2012_val_"+img_idx+".JPEG")
+                                    self.img_prefix+img_idx+".JPEG")
         else:
             img_list = sorted(os.listdir(self.root_dir))
             img_name = os.path.join(self.root_dir, img_list[idx])
@@ -52,8 +53,20 @@ class ImagenetValidationDataset(Dataset):
         sample = {'image': image, 'label': label}
         return sample
 
+    def __getitem__(self, idx):
+        # if indices passed as tensors - transform to list
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        
+        if isinstance(idx, int):
+            idx = [idx]
+        
+        samples = [self.get_idx(i) for i in idx]
+        return {'images': torch.stack([s['image'] for s in samples]), 'labels': [s['label'] for s in samples]}
+
 def get_dataset(csv_file: str='ImageNet/validation_labels.csv',
-                root_dir: str='ImageNet/val_images/'):
+                root_dir: str='ImageNet/val_images/',
+                img_prefix: str="ILSVRC2012_val_"):
     # standard ImageNet transformations
     preprocess = transforms.Compose([
         transforms.Resize(256),
@@ -65,6 +78,7 @@ def get_dataset(csv_file: str='ImageNet/validation_labels.csv',
     # get instance of the dataset
     dataset = ImagenetValidationDataset(csv_file=csv_file,
                                         root_dir=root_dir,
+                                        img_prefix=img_prefix,
                                         transform=preprocess)
     
     return dataset

@@ -19,7 +19,8 @@ class ModelInjection():
     
     # constructor
     def __init__(self, get_net: callable, dataset, net_name, arch_name, loops, d_type='i', 
-                 verbose=False, overwrite=False, maxes=[], mins=[], file_addon='', debug=False, max_range=True, layers=[]):
+                 verbose=False, overwrite=False, maxes=[], mins=[], file_addon='', debug=False, 
+                 max_range=True, layers=[], top_dir="", batch_size=1):
         print("Constructing ModelInjection...")
         
         self.debug = debug
@@ -43,6 +44,7 @@ class ModelInjection():
         self.log_file = ""                      # name of log file
         self.top_dir = ""
         self.file_addon = file_addon
+        self.batch_size = batch_size            # batch size for inference
 
         self.loops = loops                      # list of loop objects for each layer
         self.num_mem_levels = 0                 # number of memory levels for the given arch
@@ -52,15 +54,24 @@ class ModelInjection():
         self.overwrite = overwrite              # whether to overwrite the current output data file
         self.verbose = verbose                  # whether to be verbose and print stuff
         
+        # set device to run baseline model on
+        self.set_device()
         # find/set the top directory to use for output files
-        self.set_top_dir()
+        self.set_top_dir(top_dir)
         # extract info from layers
         self.get_layer_info()
         # get layer objects
         self.get_inject_layers()
+    
+    def set_device(self):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device
+        self.net.to(device)
 
-    def set_top_dir(self) -> None:
-        top_dir = "data_results/" + self.arch_name + "/" + self.net_name
+    def set_top_dir(self, top_dir) -> None:
+        if not top_dir:
+            top_dir = "data_results"
+        top_dir += "/" + self.arch_name + "/" + self.net_name
         self.top_dir = top_dir
         
     def set_mem_levels(self) -> None:
@@ -208,7 +219,7 @@ class ModelInjection():
     # get information for all layers (gets sizes, padding, stride, etc.)
     def get_layer_info(self) -> None:      
         print("Getting layer info...")
-        num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(self.get_net, self.dataset[0]['image'])
+        num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(self.get_net, self.dataset[0]['images'])
         self.num_layers = num_layers
         self.layer_sizes = var_sizes
         self.paddings = paddings
@@ -337,7 +348,7 @@ class ModelInjection():
         for i in trange(len(img_inds)):
             img_ind = img_inds[i]
             # get image
-            img = torch.unsqueeze(self.dataset[img_ind]['image'], 0)
+            img = self.dataset[img_ind]['images']
 
             if debug_outputs:
                 clean_out, clean_outputs, zeros = run_clean(self.clean_net, img, layer_id)
@@ -385,6 +396,7 @@ class ModelInjection():
                                 timed_site = [(ts[0],) for ts in timed_site]
                             elif FC_size == 3:
                                 timed_site = [(get_nonzero_ind(ts), ts[0]) for ts in timed_site]
+                                
                         # run the frontend PyTorch inference
                         inj_out, pre_val, post_val = inject_layer.run_hook(img, inj_ind, timed_site, mode, change_to, bit_val)
                         maxmin = inject_layer.get_maxmin()
@@ -392,11 +404,46 @@ class ModelInjection():
                         if debug_outputs:
                             injected_outputs = inject_layer.get_output(layer_id)
                             outputs = [clean_outputs, injected_outputs, clean_out]
+                            
                         # process outputs to output file
-                        process_outputs(inj_out, img_ind, self.dataset[img_ind]['label'], inj_ind, inj_level, pre_val, post_val, 
+                        process_outputs(inj_out, img_ind, self.dataset[img_ind]['labels'][0], inj_ind, inj_level, pre_val, post_val, 
                                         num_sites, layer_id, bit_val, maxmin, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
                 # increment after changing injection location
                 count += 1
+                
+    # given a clean network (net), some set of imgs (given by img_inds)
+    # of the dataset - return the correct classification rates
+    def get_baseline(self, img_inds):
+        self.net.eval()
+        
+        correct = 0
+        total = 0
+        classifications = []
+        # loop through each img ind provided
+        for i in range(0, len(img_inds), self.batch_size):
+            # get the slice of indices to batch together
+            end_ind = max(i + self.batch_size, len(img_inds))
+            inds = img_inds[i:end_ind]
+            
+            # run img(s) through network
+            imgs = self.dataset[inds]['images']
+            imgs = imgs.to(self.device)
+            res = self.net(imgs)
+            
+            # get the top 5 classifications
+            _, max_inds = torch.topk(res, 5, 1)
+            max_inds = max_inds.to("cpu").tolist()
+            classifications += max_inds
+            
+            # check if the top 1 confident matches the label (in csv file)
+            labels = self.dataset[inds]['labels']
+            for i in range(len(max_inds)):
+                max_ind = max_inds[i]
+                if max_ind[0] == labels[i]:
+                    correct += 1
+                total += 1
+
+        return correct, total, classifications
                         
     def get_rand_imgs(self, num_imgs, sample_correct=True):
         # if classification of image doesn't matter - sample from any
@@ -421,7 +468,7 @@ class ModelInjection():
             cand_img = random.sample(sample_from, 1)
             sample_from.remove(cand_img[0])
             # get the classification of the image
-            correct, _, _ = get_baseline(self.net, cand_img, self.dataset)
+            correct, _, _ = self.get_baseline(cand_img)
             # if classified correct - add to samples
             if correct == 1:
                 samples += cand_img
@@ -456,7 +503,7 @@ class ModelInjection():
         if not sample_correct: 
             # get the baseline accuracy
             print("Getting baseline correct rate...")
-            correct, total, classifications = get_baseline(self.net, img_inds, self.dataset)
+            correct, total, classifications = self.get_baseline(img_inds)
             correct_rate = correct/total
             self.log(correct_rate)
             print("Correct rate: " + str(correct_rate))
@@ -672,7 +719,7 @@ class ModelInjection():
 def print_topk(out, correct_class, k=5):
     _, max_inds = torch.topk(out, k, 1)
     max_inds = torch.squeeze(max_inds)
-    max_inds = max_inds.numpy()
+    max_inds = max_inds.to('cpu').numpy()
     
     classified_correct = True
     if max_inds[0] != correct_class:

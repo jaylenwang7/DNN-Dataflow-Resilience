@@ -2,6 +2,8 @@ from pathlib import Path
 import helpers
 import shutil
 from os.path import exists
+from loop import Loop
+from helpers import print_layer_sizes
 
 class MemInfo():
     def __init__(self, name: str):
@@ -122,6 +124,7 @@ def parse_files(dir: str, to_parse: str='**/*.map.txt', debug: bool=False):
     # get list of all txt files in dir
     pathlist = sorted(Path(dir).glob(to_parse), key=helpers.get_str_num)
     if not pathlist:
+        print("dir parsed: " + dir)
         assert(False and "check provided arch/model names are correct and directory structure")
     
     # get the layer number as specified by the file name
@@ -169,4 +172,49 @@ def move_maps(arch_name: str, model_name: str, map_dir: str):
         if not exists(newfile) or overwrite:
             print("Writing to: " + str(newfile))
             shutil.copy(f, newfile)
+            
+def get_loops(get_net, dir, sizes, paddings, strides, get_data, to_parse='**/*.map.txt', d_type='i', print_out=False, layers=[], ids_to_skip=[]):
+    net = get_net()
+    # parse the files in the given dir and get info
+    loops, divs, names = parse_files(dir, to_parse)
+    # get the memory names from the first layer
+    sample_id = list(loops.keys())[0]
+    out_names = [names[sample_id][div] for div in divs[sample_id][d_type]]
+    # use print_layer_sizes to get the layer_ids for each layer
+    layer_ids = print_layer_sizes(net, get_data, do_print=False, return_FC=True, return_inc=True)
+    
+    if not layers:
+        layers = range(len(layer_ids))
+    
+    # TODO: you can reuse loop objects for layers of same size - just need to reset things
+    out_loops = []
+    # loop through each layer
+    for i in range(len(layer_ids)):
+        # get layer_id for the current layer and create loop object
+        layer_id = layer_ids[i]
+        # if not in desired layers, just append None
+        if i not in layers or layer_id in ids_to_skip:
+            out_loops.append(None)
+            continue
+        
+        # create the loop using the layer_id
+        div = divs[layer_id][d_type]
+        if d_type == 'o':
+            div = [0]
+        new_loop = Loop(loops[layer_id], 
+                        div, 
+                        d_type=d_type, 
+                        input_strides=strides[i], 
+                        sizes=sizes[i], 
+                        paddings=paddings[i])
+        # add to list of loop objects
+        out_loops.append(new_loop)
+    
+    # print out each loop if desired
+    if print_out:
+        for i in range(len(out_loops)):
+            print("Layer " + str(i) + ":")
+            print(out_loops[i])
+
+    return out_loops, out_names
                 

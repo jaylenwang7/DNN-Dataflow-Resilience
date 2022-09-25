@@ -24,6 +24,8 @@ class CleanModel(nn.Module):
         self.process_FC = process_FC
         self.target_id = -1
         self.layer_ind = 0
+        self.device = "cpu"
+        self.set_device()
 
         # Register a hook for each layer
         num_layer = 0
@@ -34,6 +36,11 @@ class CleanModel(nn.Module):
                 weight_zeros = num_nonzeros(layer.weight)
                 self.weight_zeros.append((weight_zeros, weight_el))
                 num_layer += 1
+                
+    def set_device(self):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = device
+        self.model.to(device)
     
     def run(self, module, input_value, output) -> None:
         # if at target layer, then record the output and zeros
@@ -58,6 +65,7 @@ class CleanModel(nn.Module):
         self.target_id = -1
         
     def forward(self, x: Tensor) -> Tensor:
+        x = x.to(self.device)
         return self.model(x)
     
     def get_clean_outputs(self):

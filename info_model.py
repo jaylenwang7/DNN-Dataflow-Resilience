@@ -108,7 +108,6 @@ class InfoModel(nn.Module):
 
     # forward function - takes in a normal image form the dataset
     def forward(self, x: Tensor) -> Tensor:
-        x = torch.unsqueeze(x, 0)
         return self.model(x)
     
     def get_vars(self, info):
@@ -152,7 +151,7 @@ def get_layer_info(get_net: Callable, img, with_FC: bool=True):
         
     return num_layers, var_sizes, paddings, strides, FC_types
 
-def print_layer_sizes(net, net_name='', do_print: bool=True, with_FC: bool=True, return_FC: bool=True, return_inc: bool=False):
+def print_layer_sizes(net, get_data, net_name='', do_print: bool=True, with_FC: bool=True, return_FC: bool=True, return_inc: bool=False):
     # instantiate a table
     table = PrettyTable()
     if net_name:
@@ -160,11 +159,11 @@ def print_layer_sizes(net, net_name='', do_print: bool=True, with_FC: bool=True,
     table.field_names = ["layer #", "type", "weight", "output", "input", "padding", "stride", "layer id"]
     
     # get dataset to use; TODO: take in a function instead
-    dataset = get_dataset()
+    dataset = get_data()
     
     # get verbose model info and lyaer info
     vnet = InfoModel(net, process_FC=with_FC)
-    vnet(dataset[0]['image'])
+    vnet(dataset[0]['images'])
     layer_info, _ = vnet.get_info()
     
     # loop through layers and collect data while printing

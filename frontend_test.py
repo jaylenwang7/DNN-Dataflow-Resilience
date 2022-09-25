@@ -12,8 +12,7 @@ def run_thousand(get_net: Callable) -> None:
       
     dataset = get_dataset()
     net = get_net()
-    img = dataset[0]['image']
-    img = torch.unsqueeze(img, 0)
+    img = dataset[0]['images']
 
     start_time = time.time()
     for i in range(1000):
@@ -53,8 +52,7 @@ def run_thousand_injected_alexnet() -> None:
 
     dataset = get_dataset()
     alexnet = get_alexnet()
-    img = dataset[0]['image']
-    img = torch.unsqueeze(img, 0)
+    img = dataset[0]['images']
     inject_net = InjectModel(alexnet, 1)
 
     start_time = time.time()
@@ -94,8 +92,7 @@ def test_inject():
     dataset = get_dataset()
     alexnet = get_alexnet()
     clean_alexnet = get_alexnet()
-    img = dataset[0]['image']
-    img = torch.unsqueeze(img, 0)
+    img = dataset[0]['images']
     conv_id = 1
     inject_net = InjectModel(alexnet, conv_id)
 
@@ -131,20 +128,19 @@ def test_inject():
     sites = []
 
     # inj_coord = (2, 48, 37)
-    inj_coord = (100, 0, 38)
+    inj_coord = (100, 38)
     d_type = "i"
-    get_net = get_vit
+    get_net = get_deit_tiny
 
     dataset = get_dataset()
     net = get_net()
     clean_net = get_net()
-    img = dataset[0]['image']
-    img = torch.unsqueeze(img, 0)
+    img = dataset[0]['images']
     layer_id = 1
     
-    num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, dataset[0]['image'])
+    num_layers, var_sizes, paddings, strides, FC_sizes = get_layer_info(get_net, img)
     
-    inject_net = InjectModel(net, layer_id, inj_loc=d_type)
+    inject_net = InjectModel(net, layer_id, d_type=d_type)
     inject_net.set_range(VIT_224_MAX, VIT_224_MIN)
     inject_net.set_FC_size(FC_sizes[layer_id])
 

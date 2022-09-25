@@ -29,23 +29,34 @@ def bit2float(b, num_e_bits=8, num_m_bits=23, bias=127.):
     if expected_last_dim > 64:
         warnings.warn("pytorch can not process floats larger than 64 bits, keep"
                   " this in mind. Your result will be not exact.")
-
-    s = torch.index_select(b, -1, torch.arange(0, 1))
-    e = torch.index_select(b, -1, torch.arange(1, 1 + num_e_bits))
-    m = torch.index_select(b, -1, torch.arange(1 + num_e_bits,
-                                             1 + num_e_bits + num_m_bits))
+    if b.is_cuda:
+        s = torch.index_select(b, -1, torch.arange(0, 1).cuda())
+        e = torch.index_select(b, -1, torch.arange(1, 1 + num_e_bits).cuda())
+        m = torch.index_select(b, -1, torch.arange(1 + num_e_bits,
+                                                   1 + num_e_bits + num_m_bits).cuda())
+    else:
+        s = torch.index_select(b, -1, torch.arange(0, 1))
+        e = torch.index_select(b, -1, torch.arange(1, 1 + num_e_bits))
+        m = torch.index_select(b, -1, torch.arange(1 + num_e_bits,
+                                                   1 + num_e_bits + num_m_bits))
     # SIGN BIT
     out = ((-1) ** s).squeeze(-1).type(dtype)
     # EXPONENT BIT
     exponents = -torch.arange(-(num_e_bits - 1.), 1.)
     exponents = exponents.repeat(b.shape[:-1] + (1,))
+    if b.is_cuda:
+        exponents = exponents.cuda()
+        out = out.cuda()
     e_decimal = torch.sum(e * 2 ** exponents, dim=-1) - bias
     out *= 2 ** e_decimal
     # MANTISSA
-    matissa = (torch.Tensor([2.]) ** (
+    mantissa = (torch.Tensor([2.]) ** (
     -torch.arange(1., num_m_bits + 1.))).repeat(
     m.shape[:-1] + (1,))
-    out *= 1. + torch.sum(m * matissa, dim=-1)
+    if b.is_cuda:
+        out *= torch.as_tensor(1.).cuda() + torch.sum(m * mantissa.cuda(), dim=-1).cuda()
+    else:
+        out *= 1. + torch.sum(m * mantissa, dim=-1)
     return out
 
 
@@ -142,7 +153,6 @@ def flip_bit(tensor, ind:int=-1, num_bits:int=32, ind_range:tuple=None):
     # convert float to bit representation
     bit_float = float2bit(tensor, num_e_bits=e, num_m_bits=m, bias=b)
     
-    # TODO: provide option for ind range
     # if no ind given, use a random
     if ind == -1:
         if ind_range is not None:
