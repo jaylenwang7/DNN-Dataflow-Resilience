@@ -20,7 +20,7 @@ class ModelInjection():
     # constructor
     def __init__(self, get_net: callable, dataset, net_name, arch_name, loops, d_type='i', 
                  verbose=False, overwrite=False, maxes=[], mins=[], file_addon='', debug=False, 
-                 max_range=True, layers=[], top_dir="", batch_size=1):
+                 max_range=True, layers=[], top_dir="", batch_size=1, use_cpu=False):
         print("Constructing ModelInjection...")
         
         self.debug = debug
@@ -55,7 +55,7 @@ class ModelInjection():
         self.verbose = verbose                  # whether to be verbose and print stuff
         
         # set device to run baseline model on
-        self.set_device()
+        self.set_device(use_cpu)
         # find/set the top directory to use for output files
         self.set_top_dir(top_dir)
         # extract info from layers
@@ -63,8 +63,11 @@ class ModelInjection():
         # get layer objects
         self.get_inject_layers()
     
-    def set_device(self):
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def set_device(self, use_cpu=False):
+        if use_cpu:
+            self.device = torch.device('cpu')
+        else:
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.net.to(device)
 
@@ -345,13 +348,16 @@ class ModelInjection():
         # open the file
         self.open_files([layer_id])
         # loop through images
-        for i in trange(len(img_inds)):
-            img_ind = img_inds[i]
+        for i in trange(0, len(img_inds), self.batch_size):
+            end_batch = min(i + self.batch_size, len(img_inds))
+            img_batch = img_inds[i:end_batch]
             # get image
-            img = self.dataset[img_ind]['images']
+            imgs = self.dataset[img_batch]['images']
+            labels = self.dataset[img_batch]['labels']
 
             if debug_outputs:
-                clean_out, clean_outputs, zeros = run_clean(self.clean_net, img, layer_id)
+                # clean_out - final output, clean_outputs - list of outputs of each layer, zeros - list of zeros for each layer
+                clean_outs, clean_outputs, zeros = run_clean(self.clean_net, imgs, layer_id)
             
             # loop through inj locations
             for ind in range(len(inj_inds)):
@@ -371,12 +377,13 @@ class ModelInjection():
                         inj_ind = (inj_ind[0], inj_ind[1])
                     else:
                         assert(False and "d_type not supported")
-                timed_sites = error_sites[ind]
+                # get the sites for this injection index
+                all_sites = error_sites[ind]
             
                 # loop through memory levels
-                for inj_level in range(len(timed_sites)):
+                for inj_level in range(len(all_sites)):
                     # get timed sites for the level
-                    level_sites = timed_sites[inj_level]
+                    level_sites = all_sites[inj_level]
 
                     # loop through timed sites for level
                     for t in range(len(level_sites)):
@@ -384,8 +391,6 @@ class ModelInjection():
                         if type(bit) is list:
                             bit_val = bit[count]
                         
-                        set_sites = set(timed_site)
-                        timed_site = list(set_sites)
                         num_sites = len(timed_site)
                         if self.d_type == 'o':
                             num_sites = 1
@@ -396,20 +401,22 @@ class ModelInjection():
                                 timed_site = [(ts[0],) for ts in timed_site]
                             elif FC_size == 3:
                                 timed_site = [(get_nonzero_ind(ts), ts[0]) for ts in timed_site]
-                                
+                
                         # run the frontend PyTorch inference
-                        inj_out, pre_val, post_val = inject_layer.run_hook(img, inj_ind, timed_site, mode, change_to, bit_val)
-                        maxmin = inject_layer.get_maxmin()
+                        inj_outs, pre_vals, post_vals = inject_layer.run_hook(imgs, inj_ind, timed_site, mode, change_to, bit_val)
+                        maxmins = inject_layer.get_maxmin()
                         outputs = []
                         if debug_outputs:
                             injected_outputs = inject_layer.get_output(layer_id)
-                            outputs = [clean_outputs, injected_outputs, clean_out]
-                            
+                            outputs = [clean_outputs, injected_outputs, clean_outs]
+                        
                         # process outputs to output file
-                        process_outputs(inj_out, img_ind, self.dataset[img_ind]['labels'][0], inj_ind, inj_level, pre_val, post_val, 
-                                        num_sites, layer_id, bit_val, maxmin, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
-                # increment after changing injection location
-                count += 1
+                        # NOTE: labels is returned as a list
+                        process_outputs(inj_outs, img_batch, labels, inj_ind, inj_level, pre_vals, post_vals, 
+                                        num_sites, layer_id, bit_val, maxmins, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
+
+                        # increment after changing injection location
+                        count += 1
                 
     # given a clean network (net), some set of imgs (given by img_inds)
     # of the dataset - return the correct classification rates
@@ -422,7 +429,7 @@ class ModelInjection():
         # loop through each img ind provided
         for i in range(0, len(img_inds), self.batch_size):
             # get the slice of indices to batch together
-            end_ind = max(i + self.batch_size, len(img_inds))
+            end_ind = min(i + self.batch_size, len(img_inds))
             inds = img_inds[i:end_ind]
             
             # run img(s) through network
@@ -539,7 +546,7 @@ class ModelInjection():
                 injs = []
 
             # get the random index (pass in the loop object for this layer)
-            sites, inj_inds, total_num = self.get_rand(i, inj_inds=injs)
+            sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
             # if bit is passed as range, then sample random bits (one for each sample)
             if type(bit) is range:
                 bit = self.get_rand_bits(bit, total_num*num_imgs)
@@ -577,16 +584,8 @@ class ModelInjection():
             inj_inds.append(ind)
 
         return inj_inds
-                            
-    # gets injection indices to use and samples a set of sites for each chosen index
-    # must be called after get_layer_info
-    # picks num_injs injection sites
-    # for each injection site, picks 4 samples from each mem_level (if possible)
-    # total injections per image = per_sample*num_injs*num_levels
-    # so num_injs*per_sample*num_level samples
-    def get_rand(self, layer_ind, inj_inds=[], per_sample=4, num_injs=8):
-        print("Get randing...")
-        inject_loop = self.loops[layer_ind]
+    
+    def get_layer_limits(self, layer_ind: int):
         m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind] # [m, c, s, r, q, p, h, w]
         stride = self.strides[layer_ind]
         # need to use transformed sizes instead of the layer_sizes
@@ -618,6 +617,41 @@ class ModelInjection():
             limits = [range(l) for l in limits]
         else:
             assert(False)
+        
+        return limits
+            
+    def get_rand_region(self, layer_ind, n_regions=2, inj_inds=[], num_injs=8):
+        limits = self.get_layer_limits(layer_ind)
+        m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind]
+        stride = self.strides[layer_ind]
+        # get num_injs random indices
+        if not inj_inds:
+            self.log("Generated inj_inds for layer " + str(layer_ind))
+            inj_inds = self.get_rand_inds(limits, num_injs)
+        else:
+            self.log("Using given inj_inds for layer " + str(layer_ind))
+            # check that the injection indices passed in by the user are valid
+            # only need to do this if injecting into inputs
+            if self.d_type == 'i':
+                for inj in inj_inds:
+                    if not check_inj_ind(inj[1:], stride, (s, r)):
+                        raise Exception("Invalid injection given for the stride and weight size of the layer.")
+                    
+        # get the sites for each inj_ind
+        
+                            
+    # gets injection indices to use and samples a set of sites for each chosen index
+    # must be called after get_layer_info
+    # picks num_injs injection sites
+    # for each injection site, picks 4 samples from each mem_level (if possible)
+    # total injections per image = per_sample*num_injs*num_levels
+    # so num_injs*per_sample*num_level samples
+    def get_rand_loop(self, layer_ind, inj_inds=[], per_sample=4, num_injs=8):
+        print("Get randing...")
+        inject_loop = self.loops[layer_ind]
+        limits = self.get_layer_limits(layer_ind)
+        stride = self.strides[layer_ind]
+        m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind]
 
         # get num_injs random indices
         if not inj_inds:
@@ -633,11 +667,12 @@ class ModelInjection():
                         raise Exception("Invalid injection given for the stride and weight size of the layer.")
         self.log(inj_inds)
         
-        # collect sites for all three levels and all 10 indices
+        # collect sites for all three levels and all indices
+        # i = inj locations, j = memory level, k = sites group
         ALL_sites = []
         for i in range(num_injs):
             mid_site = []
-            for j in range(3):
+            for j in range(self.num_mem_levels):
                 mid_site.append([])
             ALL_sites.append(mid_site)
 
@@ -712,52 +747,76 @@ class ModelInjection():
                 # loop through each time sample
                 for sample in samples:
                     total_num += 1
-                    ALL_sites[i][j].append(sample)
+                    ALL_sites[i][j].append(list(set(sample)))
                 
         return ALL_sites, inj_inds, total_num
     
-def print_topk(out, correct_class, k=5):
-    _, max_inds = torch.topk(out, k, 1)
-    max_inds = torch.squeeze(max_inds)
+def get_topk(outs, labels, k=5):
+    _, max_inds = torch.topk(outs, k)
     max_inds = max_inds.to('cpu').numpy()
     
-    classified_correct = True
-    if max_inds[0] != correct_class:
-        classified_correct = False
+    corrects = []
+    for i in range(len(max_inds)):
+        corrects.append(max_inds[i][0] == labels[i])
     
-    percentage = torch.nn.functional.softmax(out, dim=1)[0] * 100
-    confs = []
-    for i in range(max_inds.shape[0]):
-        index = max_inds[i]
-        conf = percentage[index].item()
-        confs.append(conf)
+    percentage = torch.nn.functional.softmax(outs, dim=0) * 100
+    percentage = percentage.to("cpu").numpy()
+    top_confs = []
+    correct_confs = []
 
-    correct_conf = percentage[correct_class].item()
-    top2diff = confs[0] - confs[1]
-    return (max_inds, confs, correct_conf, top2diff, classified_correct)
-
+    for i in range(len(max_inds)):
+        top_confs.append(percentage[i][max_inds[i]].tolist())
+        correct_confs.append(percentage[i][labels[i]])
     
-def process_outputs(inj_out, img_ind, correct_class, inj_ind, inj_level, pre_val, post_val, num_sites,
-                    layer_id, bit, maxmin, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
+    top2diffs = []
+    for confs in top_confs:
+        top2diffs.append(confs[0] - confs[1])
+
+    return (max_inds, top_confs, correct_confs, top2diffs, corrects)
+
+
+# outs = [clean layer outputs, injected layer outputs, final clean output]
+def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, pre_vals, post_vals, num_sites,
+                    layer_id, bit, maxmins, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
     
-    max_inds, confs, correct_conf, top2diff, classified_correct = print_topk(inj_out, correct_class, k)
-
-    row = [img_ind, inj_ind, inj_level, bit, top2diff, correct_conf, classified_correct, max_inds, confs, pre_val, post_val, num_sites, maxmin]
-
+    num_outs = inj_outs.shape[0]
+    assert(num_outs == len(img_inds))
+    rows = []
+    max_inds, top_confs, correct_confs, top2diffs, corrects = get_topk(inj_outs, labels, k)
     if outs:
-        loss = nn.CrossEntropyLoss()
-        xentropy = loss(inj_out, outs[2]).item()
-        row += [xentropy]
+        loss = nn.CrossEntropyLoss(reduction='none')
+        xentropys = loss(inj_outs, outs[2]).tolist()
         
-        num_diff = compare_outputs(outs[0], outs[1])
-        row += [num_diff]
-    else:
-        row += [None]
-    
-    if zeros:
-        row += [zeros]
-    else:
-        row += [None]
+    for i in range(num_outs):
+        out = inj_outs[i]
+        row = [img_inds[i], 
+               inj_ind, 
+               inj_level, 
+               bit, 
+               top2diffs[i], 
+               correct_confs[i], 
+               corrects[i], 
+               max_inds, 
+               top_confs[i], 
+               pre_vals[i], 
+               post_vals[i], 
+               num_sites, 
+               (maxmins[0][i], maxmins[1][i])]
+
+        if outs:
+            row += [xentropys[i]]
+            
+            num_diff = compare_outputs(outs[0][i], outs[1][i])
+            row += [num_diff]
+        else:
+            row += [None]
+        
+        if zeros:
+            row += [zeros]
+        else:
+            row += [None]
+        
+        rows.append(row)
     
     # write out data to csv file
     if filename:
@@ -766,4 +825,4 @@ def process_outputs(inj_out, img_ind, correct_class, inj_ind, inj_level, pre_val
             csvwriter = csv.writer(csvfile, delimiter=',')
 
             # writing the data rows 
-            csvwriter.writerow(row)
+            csvwriter.writerows(rows)

@@ -8,17 +8,30 @@ from helpers import print_layer_sizes
 class MemInfo():
     def __init__(self, name: str):
         self.name = name
-        self.mem_dict = dict(w=False, i=False, o=False)
+        self.mem_dict = dict(w=0, i=0, o=0)
         
-    def set_dict(self, key: str):
+    def set_dict(self, key: str, val: int):
         assert(key in ['w', 'i', 'o'])
-        self.mem_dict[key] = True
+        self.mem_dict[key] = val
         
     def get_dict(self):
         return self.mem_dict
     
     def get_name(self):
         return self.name
+    
+def strip_size(line: str, d_type: str):
+    if d_type == 'w':
+        d = "Weights"
+    elif d_type == 'i':
+        d = "Inputs"
+    elif d_type == 'o':
+        d = "Outputs"
+    else:
+        assert(False)
+    
+    start = line.find(d)
+    return int(line[start:].split(':')[1].split()[0])
 
 def parse_line(line: str):
     mem_obj = []
@@ -54,13 +67,13 @@ def parse_line(line: str):
         mem_obj = MemInfo(line_words[0])
         # set whatever memory is contained to true in dict
         if "Weights" in line:
-            mem_obj.set_dict('w')
+            mem_obj.set_dict('w', strip_size(line, 'w'))
             line_type = 1
         if "Inputs" in line:
-            mem_obj.set_dict('i')
+            mem_obj.set_dict('i', strip_size(line, 'i'))
             line_type = 1
         if "Outputs" in line:
-            mem_obj.set_dict('o')
+            mem_obj.set_dict('o', strip_size(line, 'o'))
             line_type = 1
     
     return line_type, mem_obj, spatial, var_char, size
@@ -77,7 +90,8 @@ def parse_map(file_name: str):
             file_data.append(parse_line(line))
         
     loops = []
-    divs = dict(w=[], i=[], o=[])
+    # each div val is tuple of two lists, first is location of all_dividers, second is the size of the memory
+    divs = dict(w=([], []), i=([], []), o=([], []))
     name_dict = {}
     var_ind = 0 # keeps track of how many loop vars been processed
     # loop through all line data in file
@@ -112,8 +126,9 @@ def parse_map(file_name: str):
             # add the mem divs to divs
             mem_dict = mem_obj.get_dict()
             for key, val in mem_dict.items():
-                if val:
-                    divs[key].append(var_ind)
+                if val != 0:
+                    divs[key][0].append(var_ind)
+                    divs[key][1].append(val)
         else:
             assert(False)
         
@@ -179,7 +194,7 @@ def get_loops(get_net, dir, sizes, paddings, strides, get_data, to_parse='**/*.m
     loops, divs, names = parse_files(dir, to_parse)
     # get the memory names from the first layer
     sample_id = list(loops.keys())[0]
-    out_names = [names[sample_id][div] for div in divs[sample_id][d_type]]
+    out_names = [names[sample_id][div] for div in divs[sample_id][d_type][0]]
     # use print_layer_sizes to get the layer_ids for each layer
     layer_ids = print_layer_sizes(net, get_data, do_print=False, return_FC=True, return_inc=True)
     
@@ -198,7 +213,7 @@ def get_loops(get_net, dir, sizes, paddings, strides, get_data, to_parse='**/*.m
             continue
         
         # create the loop using the layer_id
-        div = divs[layer_id][d_type]
+        div, mem_sizes = divs[layer_id][d_type]
         if d_type == 'o':
             div = [0]
         new_loop = Loop(loops[layer_id], 

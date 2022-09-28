@@ -33,7 +33,7 @@ class CleanModel(nn.Module):
             if isinstance(layer, (nn.Conv2d, nn.Linear)):
                 layer.register_forward_hook(self.run)
                 weight_el = layer.weight.numel()
-                weight_zeros = num_nonzeros(layer.weight)
+                weight_zeros = num_nonzeros(layer.weight, dims=None)
                 self.weight_zeros.append((weight_zeros, weight_el))
                 num_layer += 1
                 
@@ -46,8 +46,8 @@ class CleanModel(nn.Module):
         # if at target layer, then record the output and zeros
         if self.layer_ind == self.target_id or self.target_id == -1:
             self.clean_outputs.append(output.detach().clone())
-            self.input_zeros.append((num_nonzeros(input_value[0]), input_value[0].numel()))
-            self.output_zeros.append((num_nonzeros(output), output.numel()))
+            self.input_zeros.append((num_nonzeros(input_value[0], dims=(1, 2, 3)), input_value[0][0].numel()))
+            self.output_zeros.append((num_nonzeros(output, dims=(1, 2, 3)), output[0].numel()))
         else:
             self.clean_outputs.append(None)
             self.input_zeros.append(None)
@@ -80,11 +80,11 @@ class CleanModel(nn.Module):
     def get_nonzeros(self):
         return (self.output_zeros, self.input_zeros, self.weight_zeros)
 
-def run_clean(clean_net: CleanModel, test_img, layer_id: int=-1):
+def run_clean(clean_net: CleanModel, img, layer_id: int=-1):
     clean_net.reset()
     clean_net.set_target_id(layer_id)
     with torch.no_grad():
-        clean_out = clean_net(test_img)
+        clean_out = clean_net(img)
 
     if layer_id == -1:
         return clean_out, clean_net.get_clean_outputs(), clean_net.get_nonzeros()

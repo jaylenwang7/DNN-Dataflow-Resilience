@@ -21,8 +21,8 @@ class InjectModel(nn.Module):
         self.mode = -1
         self.bit = -1
         self.change_to = 1000.
-        self.pre_value = []
-        self.post_value = []
+        self.pre_values = []
+        self.post_values = []
         self.max_vals = []
         self.min_vals = []
         self.range_max = False
@@ -98,7 +98,7 @@ class InjectModel(nn.Module):
         
     def bitflip_value(self, value):
         # for data recording purposes - keep the original value
-        self.pre_value = value.detach().clone()
+        self.pre_values.append(value.item())
         
         # change the value depending on the mode
         value = value.to(self.device)
@@ -111,7 +111,7 @@ class InjectModel(nn.Module):
         else:
             assert(False)
         # record changed value
-        self.post_value = value.detach().clone()
+        self.post_values.append(value.item())
         return value
     
     # a hook function that will perform HW injection (given some SW error model)
@@ -129,8 +129,9 @@ class InjectModel(nn.Module):
         
         # if injecting into input - need to do this online during the hook
         if self.d_type == 'i':
-            inject_val = input_tensor[0][self.inj_coord]
-            input_tensor[0][self.inj_coord] = self.bitflip_value(inject_val)
+            for i in range(batch_size):
+                inject_val = input_tensor[i][self.inj_coord]
+                input_tensor[i][self.inj_coord] = self.bitflip_value(inject_val)
         
         if self.d_type != 'o':
             # 2 ===========
@@ -145,8 +146,9 @@ class InjectModel(nn.Module):
                 # if empty list is given - then just directly copy (don't pick any sites)
                 output.copy_(faulty_output)
         else:
-            inject_val = output[0][self.inj_coord]
-            output[0][self.inj_coord] = self.bitflip_value(inject_val)
+            for i in range(batch_size):
+                inject_val = output[i][self.inj_coord]
+                output[i][self.inj_coord] = self.bitflip_value(inject_val)
         
         # 4 ===========
         if self.range_max:
@@ -164,8 +166,8 @@ class InjectModel(nn.Module):
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
         
         # add the resulting max and min, to see if the clamp worked, for debugging purposes
-        self.max = torch.max(output).item()
-        self.min = torch.min(output).item()
+        self.maxes = torch.amax(output, dim=(1, 2, 3)).to("cpu").tolist()
+        self.mins = torch.amin(output, dim=(1, 2, 3)).to("cpu").tolist()
             
         # 5 ===========
         if self.layer_ind == self.layer_id or self.all_outs:
@@ -223,11 +225,11 @@ class InjectModel(nn.Module):
     # called before each hook call
     # only reset values for things that change between injection calls
     def reset(self):
-        if self.d_type == 'w' and not self.pre_value == []:
+        if self.d_type == 'w' and not self.pre_values == []:
             self.reset_weight()
         self.outputs = []
-        self.pre_value = []
-        self.post_value = []
+        self.pre_values = []
+        self.post_values = []
         self.inj_coord = 0
         self.sites = []
         self.mode = -1
@@ -298,7 +300,7 @@ class InjectModel(nn.Module):
         with torch.no_grad():
             out = self.forward(test_img)
 
-        return (out, self.pre_value.item(), self.post_value.item())
+        return (out, self.pre_values, self.post_values)
     
     def get_maxmin(self):
-        return self.max, self.min
+        return self.maxes, self.mins

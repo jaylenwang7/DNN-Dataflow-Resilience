@@ -79,9 +79,9 @@ def compare_outputs_range(output1, output2):
 
     return num_diffs, ranges
 
-def num_nonzeros(output):
-    num_z = torch.count_nonzero(output)
-    return int(num_z.item())
+def num_nonzeros(output, dims=None):
+    num_z = torch.count_nonzero(output, dim=dims)
+    return num_z.to("cpu").tolist()
 
 def get_new_filename(filename, extension='csv'):
     file_num = -1

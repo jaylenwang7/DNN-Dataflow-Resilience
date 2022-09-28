@@ -144,6 +144,7 @@ random*.py
 *.bash_history
 *.profile
 *.python_history
+*_experiment.py
 
 # Pickle files
 *.pickle
