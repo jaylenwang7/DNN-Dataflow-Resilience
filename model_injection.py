@@ -65,11 +65,12 @@ class ModelInjection():
     
     def set_device(self, use_cpu=False):
         if use_cpu:
-            self.device = torch.device('cpu')
+            device = torch.device('cpu')
         else:
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        print("Using device: " + torch.cuda.get_device_name(device))
         self.device = device
-        self.net.to(device)
+        self.net.to(self.device)
 
     def set_top_dir(self, top_dir) -> None:
         if not top_dir:
@@ -190,7 +191,7 @@ class ModelInjection():
         for i in range(self.num_layers):
             # get the model and get the layer injection object
             net_inj = self.get_net()
-            inject_layer = InjectModel(net_inj, i, d_type=self.d_type)
+            inject_layer = InjectModel(net_inj, i, d_type=self.d_type, device=self.device)
             # if this layer is FC, set its size
             if self.FC_sizes[i] != -1:
                 inject_layer.set_FC_size(self.FC_sizes[i])
