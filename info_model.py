@@ -1,7 +1,5 @@
 from torch import nn, Tensor
-import torch
 from prettytable import PrettyTable
-from dataset import get_dataset
 from typing import Callable
 
 class LayerInfo():

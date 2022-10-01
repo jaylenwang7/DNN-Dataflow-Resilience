@@ -1,20 +1,22 @@
-from clean_model import CleanModel, run_clean
-from helpers import *
+from clean_model import CleanModel
+from helpers import get_new_filename, check_inj_ind, check_inj_coord, compare_outputs
 import torch
+import torch.nn as nn
 import random
 import csv
 from os.path import exists
 from tqdm import trange
 from pathlib import Path
 from inject_model import InjectModel
-from info_model import *
-from max_model import *
+from info_model import get_layer_info
+from max_model import get_range
 from typing import Any, List, Tuple
+import itertools
 
 # class for an object that is used to inject into a model (for all the layers of the model)
 class ModelInjection():
     # these are the data fields that are collected
-    fields = ['Img Ind', 'Inj Ind', 'Level', 'BitInd', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top5', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'MaxMin', 'XEntropy','NumDiff', 'Zeros']
+    fields = ['Img Ind', 'Inj Ind', 'Level', 'BitInd', 'Site_ID', 'Top2Diff', 'CorrectClassConf', 'ClassifiedCorrect', 'Top5', 'Top Confs', 'Preval', 'Postval', 'NumSites', 'MaxMin', 'XEntropy','NumDiff', 'Zeros']
     d_types = ['i', 'w', 'o']
     
     # constructor
@@ -23,15 +25,19 @@ class ModelInjection():
                  max_range=True, layers=[], top_dir="", batch_size=1, use_cpu=False):
         print("Constructing ModelInjection...")
         
+        self.net = get_net()                    # given network
+        # set device to run baseline model on
+        self.set_device(use_cpu)
+        
         self.debug = debug
         self.max_range = max_range
         self.get_net = get_net                  # store function to get network
         self.dataset = dataset                  # dataset to get images from
         self.arch_name = arch_name              # name of the architecture (for file purposes)
         self.net_name = net_name                # name of the network used
-        self.net = get_net()                    # given network
         clean_net = get_net()                   # make a copy of the given net to use as inside wrapper for CleanModel
-        self.clean_net = CleanModel(clean_net)  # clean network
+        self.clean_net = CleanModel(clean_net,  # clean network
+                                    device=self.device)
         self.layer_sizes = []                   # list of sizes for each layer (m, p, s, r, etc.)
         self.paddings = []                      # list of padding sizes for each layer
         self.strides = []                       # list of stride lengths for each layer
@@ -54,8 +60,6 @@ class ModelInjection():
         self.overwrite = overwrite              # whether to overwrite the current output data file
         self.verbose = verbose                  # whether to be verbose and print stuff
         
-        # set device to run baseline model on
-        self.set_device(use_cpu)
         # find/set the top directory to use for output files
         self.set_top_dir(top_dir)
         # extract info from layers
@@ -65,10 +69,11 @@ class ModelInjection():
     
     def set_device(self, use_cpu=False):
         if use_cpu:
-            device = torch.device('cpu')
+            device = torch.device("cpu")
+            print("Using device: " + str(device))
         else:
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        print("Using device: " + torch.cuda.get_device_name(device))
+            print("Using device: " + torch.cuda.get_device_name(device))
         self.device = device
         self.net.to(self.device)
 
@@ -358,7 +363,7 @@ class ModelInjection():
 
             if debug_outputs:
                 # clean_out - final output, clean_outputs - list of outputs of each layer, zeros - list of zeros for each layer
-                clean_outs, clean_outputs, zeros = run_clean(self.clean_net, imgs, layer_id)
+                clean_outs, clean_outputs, zeros = self.clean_net.run_clean(imgs, layer_id)
             
             # loop through inj locations
             for ind in range(len(inj_inds)):
@@ -380,6 +385,9 @@ class ModelInjection():
                         assert(False and "d_type not supported")
                 # get the sites for this injection index
                 all_sites = error_sites[ind]
+                
+                # marks the site used for each image
+                site_id = 0
             
                 # loop through memory levels
                 for inj_level in range(len(all_sites)):
@@ -413,11 +421,12 @@ class ModelInjection():
                         
                         # process outputs to output file
                         # NOTE: labels is returned as a list
-                        process_outputs(inj_outs, img_batch, labels, inj_ind, inj_level, pre_vals, post_vals, 
+                        process_outputs(inj_outs, img_batch, labels, inj_ind, inj_level, site_id, pre_vals, post_vals, 
                                         num_sites, layer_id, bit_val, maxmins, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
 
                         # increment after changing injection location
                         count += 1
+                        site_id += 1
                 
     # given a clean network (net), some set of imgs (given by img_inds)
     # of the dataset - return the correct classification rates
@@ -637,9 +646,26 @@ class ModelInjection():
                 for inj in inj_inds:
                     if not check_inj_ind(inj[1:], stride, (s, r)):
                         raise Exception("Invalid injection given for the stride and weight size of the layer.")
-                    
-        # get the sites for each inj_ind
         
+        def get_slices(d_type, window, n_regions):
+            if d_type == 'i':
+                pass
+            elif d_type == 'w':
+                pass
+            elif d_type == 'o':
+                pass
+            
+        # get the separate indices for each region
+        all_sites = []
+        for i in range(num_injs):
+            inj_ind = inj_inds[i]
+            all_sites.append([])
+            window = self.get_inj_window(layer_ind, inj_ind)
+            list(itertools.product(get_slices(self.d_type, window, n_regions)))
+    
+    def get_inj_window(self, layer_ind, inj_ind):
+        inject_loop = self.loops[layer_ind]
+        return inject_loop.get_original_window(inj_ind)
                             
     # gets injection indices to use and samples a set of sites for each chosen index
     # must be called after get_layer_info
@@ -670,14 +696,14 @@ class ModelInjection():
         
         # collect sites for all three levels and all indices
         # i = inj locations, j = memory level, k = sites group
-        ALL_sites = []
+        all_sites = []
         for i in range(num_injs):
             mid_site = []
             for j in range(self.num_mem_levels):
                 mid_site.append([])
-            ALL_sites.append(mid_site)
+            all_sites.append(mid_site)
 
-        # total number of samples in ALL_sites
+        # total number of samples in all_sites
         total_num = 0
         
         # generate for num_injs indices
@@ -748,9 +774,9 @@ class ModelInjection():
                 # loop through each time sample
                 for sample in samples:
                     total_num += 1
-                    ALL_sites[i][j].append(list(set(sample)))
+                    all_sites[i][j].append(list(set(sample)))
                 
-        return ALL_sites, inj_inds, total_num
+        return all_sites, inj_inds, total_num
     
 def get_topk(outs, labels, k=5):
     _, max_inds = torch.topk(outs, k)
@@ -777,7 +803,7 @@ def get_topk(outs, labels, k=5):
 
 
 # outs = [clean layer outputs, injected layer outputs, final clean output]
-def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, pre_vals, post_vals, num_sites,
+def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre_vals, post_vals, num_sites,
                     layer_id, bit, maxmins, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
     
     num_outs = inj_outs.shape[0]
@@ -794,6 +820,7 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, pre_vals, po
                inj_ind, 
                inj_level, 
                bit, 
+               site_id,
                top2diffs[i], 
                correct_confs[i], 
                corrects[i], 

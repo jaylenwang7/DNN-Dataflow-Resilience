@@ -1,11 +1,11 @@
 from dataset import get_dataset
 from helpers import *
-from info_model import *
+from info_model import get_layer_info
 from loop import Loop
 from model_injection import ModelInjection
 from plotter import Plotter, combine_plots
-from parser import *
-from max_model import *
+from parser import get_loops, move_maps
+from max_model import get_range
 from typing import Callable, List
 
 
@@ -425,7 +425,7 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
     # start the injection by creating a ModelInjection and then running full_inject
     mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, 
                              overwrite=overwrite, debug=debug, d_type=d_type, max_range=True, 
-                             batch_size=batch_size, top_dir=out_dir, file_addon=add_on)
+                             batch_size=batch_size, top_dir=out_dir, file_addon=add_on, use_cpu=use_cpu)
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, layers=layers, num_imgs=num_imgs)
     print(correct_rate)
     

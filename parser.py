@@ -3,7 +3,7 @@ import helpers
 import shutil
 from os.path import exists
 from loop import Loop
-from helpers import print_layer_sizes
+from info_model import print_layer_sizes
 
 class MemInfo():
     def __init__(self, name: str):

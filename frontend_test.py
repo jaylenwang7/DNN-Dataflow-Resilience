@@ -4,7 +4,7 @@ from helpers import *
 from dataset import *
 import loop as Loop
 from inject_model import InjectModel
-from clean_model import CleanModel, run_clean
+from clean_model import CleanModel
 from info_model import get_layer_info
 from typing import Callable
 
@@ -97,7 +97,7 @@ def test_inject():
     inject_net = InjectModel(alexnet, conv_id)
 
     clean_net = CleanModel(clean_alexnet)
-    _, clean_output, zeros = run_clean(clean_net, img, conv_id)
+    _, clean_output, zeros = clean_net.run_clean(img, conv_id)
 
     # scalene_profiler.start()
     inject_net.run_hook(img, inj_coord, sites)
@@ -145,7 +145,7 @@ def test_inject():
     inject_net.set_FC_size(FC_sizes[layer_id])
 
     clean_net = CleanModel(clean_net)
-    _, clean_output, zeros = run_clean(clean_net, img, layer_id)
+    _, clean_output, zeros = clean_net.run_clean(img, layer_id)
 
     inject_net.run_hook(img, inj_coord, sites, mode="bit", bit=1)
     

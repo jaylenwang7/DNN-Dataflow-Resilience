@@ -3,12 +3,11 @@ import torch
 from torch import nn, Tensor
 import copy
 import bitflip
-from helpers import *
 from typing import Union
 
 # object to inject into a single layer
 class InjectModel(nn.Module):
-    def __init__(self, model: nn.Module, layer_id, d_type='i'):
+    def __init__(self, model: nn.Module, layer_id, d_type='i', device=None):
         super().__init__()
         
         # initialize all params
@@ -37,7 +36,7 @@ class InjectModel(nn.Module):
         # set what type of injection based on user input
         self.set_d_type(d_type)
         # set device to run on
-        self.set_device()
+        self.set_device(device)
 
         # register a hook for each layer
         with torch.no_grad():
@@ -55,8 +54,9 @@ class InjectModel(nn.Module):
                     num_layer += 1
             self.num_layer = num_layer
         
-    def set_device(self):
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def set_device(self, device):
+        if device is None:
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.model.to(device)
             

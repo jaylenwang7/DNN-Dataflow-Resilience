@@ -7,7 +7,7 @@ class CleanModel(nn.Module):
     without any injections.
     """
     
-    def __init__(self, model: nn.Module, process_FC: bool=False):
+    def __init__(self, model: nn.Module, process_FC: bool=False, device=None):
         """Initializes a CleanModel instance.
 
         Args:
@@ -25,7 +25,7 @@ class CleanModel(nn.Module):
         self.target_id = -1
         self.layer_ind = 0
         self.device = "cpu"
-        self.set_device()
+        self.set_device(device)
 
         # Register a hook for each layer
         num_layer = 0
@@ -37,8 +37,9 @@ class CleanModel(nn.Module):
                 self.weight_zeros.append((weight_zeros, weight_el))
                 num_layer += 1
                 
-    def set_device(self):
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    def set_device(self, device):
+        if device is None:
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.device = device
         self.model.to(device)
     
@@ -80,13 +81,13 @@ class CleanModel(nn.Module):
     def get_nonzeros(self):
         return (self.output_zeros, self.input_zeros, self.weight_zeros)
 
-def run_clean(clean_net: CleanModel, img, layer_id: int=-1):
-    clean_net.reset()
-    clean_net.set_target_id(layer_id)
-    with torch.no_grad():
-        clean_out = clean_net(img)
+    def run_clean(self, img, layer_id: int=-1):
+        self.reset()
+        self.set_target_id(layer_id)
+        with torch.no_grad():
+            clean_out = self.forward(img)
 
-    if layer_id == -1:
-        return clean_out, clean_net.get_clean_outputs(), clean_net.get_nonzeros()
-    else:
-        return clean_out, clean_net.get_clean_output(layer_id), clean_net.get_nonzero(layer_id)
+        if layer_id == -1:
+            return clean_out, self.get_clean_outputs(), self.get_nonzeros()
+        else:
+            return clean_out, self.get_clean_output(layer_id), self.get_nonzero(layer_id)

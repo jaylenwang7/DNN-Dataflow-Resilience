@@ -4,7 +4,6 @@ from os.path import exists
 import os
 import numpy as np
 import pickle
-from info_model import *
 from pathlib import Path
 import timm
 

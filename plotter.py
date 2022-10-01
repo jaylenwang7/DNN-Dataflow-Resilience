@@ -1,7 +1,7 @@
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from pathlib import Path
-from helpers import *
+from helpers import get_str_num, get_new_filename
 import pandas as pd
 import numpy as np
 import os
@@ -82,7 +82,7 @@ class Plotter():
         p.mkdir(parents=True, exist_ok=True)
         stats_filename = data_dir + "stats_" + self.d_type_name + ".csv"
         self.stats_file = stats_filename
-        if not exists(self.stats_file):
+        if not os.path.exists(self.stats_file):
             print("Opening new stats file at: " + self.stats_file)
             with open(stats_filename, 'w', newline='') as csvfile: 
                 csvwriter = csv.writer(csvfile, delimiter=',') 
