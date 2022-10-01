@@ -1,7 +1,6 @@
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from pathlib import Path
-from IPython.display import display
 from helpers import *
 import pandas as pd
 import numpy as np
