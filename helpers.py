@@ -8,42 +8,42 @@ from pathlib import Path
 import timm
 
 def get_alexnet():
-    net = models.alexnet(pretrained=True)
+    net = models.alexnet(weights='DEFAULT')
     net.eval()
     return net
 
 def get_resnet18():
-    net = models.resnet18(pretrained=True)
+    net = models.resnet18(weights='DEFAULT')
     net.eval()
     return net
 
 def get_mobilenet_v3_small():
-    net = models.mobilenet_v3_small(pretrained=True)
+    net = models.mobilenet_v3_small(weights='DEFAULT')
     net.eval()
     return net
 
 def get_convnext_tiny():
-    net = models.convnext_tiny(pretrained=True)
+    net = models.convnext_tiny(weights='DEFAULT')
     net.eval()
     return net
 
 def get_convnext_small():
-    net = models.convnext_tiny(pretrained=True)
+    net = models.convnext_tiny(weights='DEFAULT')
     net.eval()
     return net
 
 def get_efficientnet_b0():
-    net = models.efficientnet_b0(pretrained=True)
+    net = models.efficientnet_b0(weights='DEFAULT')
     net.eval()
     return net
 
 def get_googlenet():
-    net = models.googlenet(pretrained=True)
+    net = models.googlenet(weights='DEFAULT')
     net.eval()
     return net
 
 def get_squeezenet():
-    net = models.squeezenet(pretrained=True)
+    net = models.squeezenet(weights='DEFAULT')
     net.eval()
     return net
 

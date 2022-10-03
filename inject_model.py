@@ -140,8 +140,9 @@ class InjectModel(nn.Module):
             # 3 =========== 
             # if the list of sites is not empty
             if self.sites:
-                for site in self.sites:
-                    output[0][site] = faulty_output[0][site]
+                for i in range(batch_size):
+                    for site in self.sites:
+                        output[i][site] = faulty_output[i][site]
             else:
                 # if empty list is given - then just directly copy (don't pick any sites)
                 output.copy_(faulty_output)

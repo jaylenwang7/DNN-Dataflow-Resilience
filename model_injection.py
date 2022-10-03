@@ -12,6 +12,7 @@ from info_model import get_layer_info
 from max_model import get_range
 from typing import Any, List, Tuple
 import itertools
+import numpy as np
 
 # class for an object that is used to inject into a model (for all the layers of the model)
 class ModelInjection():
@@ -70,7 +71,7 @@ class ModelInjection():
     def set_device(self, use_cpu=False):
         if use_cpu:
             device = torch.device("cpu")
-            print("Using device: " + str(device))
+            print("Using device: CPU" )
         else:
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
             print("Using device: " + torch.cuda.get_device_name(device))
@@ -333,6 +334,8 @@ class ModelInjection():
     #   for each injection indices in inj_inds
     #       for each error site in error_sites (timed)
     #           inject into that error site using inject_layer
+    
+    # error_sites must be a 3-D list: [inj_ind][mem_level][sampled_timed_sites]
     def inject(self, img_inds, inj_inds, error_sites, inject_layer, layer_id, 
                mode="change_to", change_to=1000., bit=-1, debug_outputs=False):
         
@@ -366,7 +369,8 @@ class ModelInjection():
                 clean_outs, clean_outputs, zeros = self.clean_net.run_clean(imgs, layer_id)
             
             # loop through inj locations
-            for ind in range(len(inj_inds)):
+            assert(len(error_sites) == len(inj_inds))
+            for ind in range(len(error_sites)):
                 # get inj location and timed sites for all levels
                 inj_ind = inj_inds[ind]
                 # reform injection index for FC, based on input or weight
@@ -557,6 +561,7 @@ class ModelInjection():
 
             # get the random index (pass in the loop object for this layer)
             sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
+            # sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs)
             # if bit is passed as range, then sample random bits (one for each sample)
             if type(bit) is range:
                 bit = self.get_rand_bits(bit, total_num*num_imgs)
@@ -647,21 +652,44 @@ class ModelInjection():
                     if not check_inj_ind(inj[1:], stride, (s, r)):
                         raise Exception("Invalid injection given for the stride and weight size of the layer.")
         
-        def get_slices(d_type, window, n_regions):
+        # returns ranges of values dividing up the output into tiles
+        def get_site_regions(d_type, window, n_regions):
+            def get_iter_product(regions):
+                return list(itertools.product(*regions))
+            
+            def range_split(r, n):
+                return [n.tolist() for n in np.array_split(np.array(r), n)]
+            
+            # for input, only divide over output channels for now
+            out_sites = []
             if d_type == 'i':
-                pass
+                channel_splits = range_split(window[0], n_regions)
+                for cs in channel_splits:
+                    out_sites.append(get_iter_product([cs, window[1], window[2]]))
+            # for weights, divide into 2D tiles    
             elif d_type == 'w':
-                pass
+                q_splits = range_split(window[1], n_regions)
+                p_splits = range_split(window[2], n_regions)
+                for qs in q_splits:
+                    for ps in p_splits:
+                        out_sites.append(get_iter_product([window[0], qs, ps]))
+            # for output, just return the window
             elif d_type == 'o':
-                pass
+                out_sites.append(get_iter_product(window))
+            
+            return out_sites
             
         # get the separate indices for each region
         all_sites = []
+        total_num = 0
         for i in range(num_injs):
             inj_ind = inj_inds[i]
-            all_sites.append([])
             window = self.get_inj_window(layer_ind, inj_ind)
-            list(itertools.product(get_slices(self.d_type, window, n_regions)))
+            site_regions = get_site_regions(self.d_type, window, n_regions)
+            all_sites.append([site_regions])
+            total_num += len(site_regions)
+            
+        return all_sites, inj_inds, total_num
     
     def get_inj_window(self, layer_ind, inj_ind):
         inject_loop = self.loops[layer_ind]
@@ -786,7 +814,7 @@ def get_topk(outs, labels, k=5):
     for i in range(len(max_inds)):
         corrects.append(max_inds[i][0] == labels[i])
     
-    percentage = torch.nn.functional.softmax(outs, dim=0) * 100
+    percentage = torch.nn.functional.softmax(outs, dim=1) * 100
     percentage = percentage.to("cpu").numpy()
     top_confs = []
     correct_confs = []
@@ -824,7 +852,7 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
                top2diffs[i], 
                correct_confs[i], 
                corrects[i], 
-               max_inds, 
+               max_inds[i], 
                top_confs[i], 
                pre_vals[i], 
                post_vals[i], 
