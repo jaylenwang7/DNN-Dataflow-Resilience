@@ -373,7 +373,7 @@ def pick_level_names(arch_name:str, d_type:str='i'):
     
 def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], 
                   overwrite: bool=False, print_loops: bool=False, map_dir: str="", num_imgs=-1, label_path: str="", img_path: str="", 
-                  timeloop_map_dir="", out_dir="", use_cpu=False, batch_size=1, img_inds=[], add_on="", loops=None):
+                  timeloop_map_dir="", out_dir="", use_cpu=False, batch_size=1, img_inds=[], add_on="", loops=None, sites_method=""):
     """Function to run an injection experiment with the given network and arch. See README for how the data is outputted. 
 
     Args:
@@ -426,7 +426,8 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
     mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, 
                              overwrite=overwrite, debug=debug, d_type=d_type, max_range=True, 
                              batch_size=batch_size, top_dir=out_dir, file_addon=add_on, use_cpu=use_cpu)
-    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, layers=layers, num_imgs=num_imgs)
+    correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, 
+                                       layers=layers, num_imgs=num_imgs, sites_method=sites_method)
     print(correct_rate)
     
 
@@ -483,7 +484,7 @@ def run_plot(arch_name: str, net_name: str, correlate: bool=False, add_on: str='
             threshold = 2.0
         plotter.collect_stats(thresh=threshold)
     
-    if correlate or data_all:
+    if correlate:
         plotter.correlate(level_names=mem_levels)
     
     if no_plot:

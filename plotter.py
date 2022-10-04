@@ -274,9 +274,9 @@ class Plotter():
     
     # fields used for stats files - NOTE: SEE README FOR DESCRIPTIONS OF STATS
     fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "NonZeroRate", "ZeroRate", "NumNonZero", "NumZero", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8", "NumSamples"]
-    def collect_stats(self, thresh=2.0):
+    
+    def get_df(self):
         all_dfs = []
-        nsamples = 0
         for i in range(len(self.layers)):
             df = pd.read_csv(self.filenames[i])
             nsamples += len(df)
@@ -284,7 +284,31 @@ class Plotter():
                 print(self.filenames[i])
                 assert(False)
             all_dfs.append(df)
-        df = pd.concat(all_dfs)
+        return pd.concat(all_dfs)
+    
+    def get_groupby(self, cols, df=None):
+        if df is None:
+            df = self.get_df()
+        
+        if isinstance(cols, str):
+            cols = [cols]
+        
+        out_rates = []
+        n_samples = []
+        for col in cols:
+            if col not in df:
+                print(col)
+                print(df)
+                assert(False)
+            groups = df.groupby(col)
+            num_samples = groups.size()
+            n_samples.append(num_samples)
+            out_rates.append((groups["ClassifiedCorrect"].sum() / num_samples).tolist())
+        return out_rates, n_samples
+        
+    def collect_stats(self, thresh=2.0):
+        nsamples = 0
+        df = self.get_df()
         
         df["Thresh"] = df["Preval"].apply(lambda x: x >= thresh or x <= -thresh)
         df["0to1"] = df.apply(lambda x: x["Preval"] <= x["Postval"], axis=1)
@@ -295,21 +319,7 @@ class Plotter():
         
         avg_vals = [df["AbsPreval"].mean(), df["AbsPostval"].mean(), df["Diff"].mean()]
         
-        groups = df.groupby("Thresh")
-        num_samples = groups.size()
-        thresh_error = (groups["ClassifiedCorrect"].sum() / num_samples).tolist()
-        
-        groups = df.groupby("0to1")
-        num_samples = groups.size()
-        change_error = (groups["ClassifiedCorrect"].sum() / num_samples).tolist()
-        
-        groups = df.groupby("BitInd")
-        num_samples = groups.size()
-        bit_error = (groups["ClassifiedCorrect"].sum() / num_samples).tolist()
-        
-        groups = df.groupby("ZeroRate")
-        zero_samples = groups.size()
-        zero_error = (groups["ClassifiedCorrect"].sum() / zero_samples).tolist()
+        (thresh_error, change_error, bit_error, zero_error), num_samples = self.get_groupby(["Thresh", "0to1", "BitInd", "ZeroRate"], df=df)
         
         def pad_list(lst, to_len=3):
             lst += [None] * (to_len-len(lst))

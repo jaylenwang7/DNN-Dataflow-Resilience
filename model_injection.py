@@ -504,7 +504,7 @@ class ModelInjection():
     # bit is for the bit to change - if is number, then will always inject into that one
     #   if is a range object, then is a range of bits to sample from
     def full_inject(self, num_imgs=100, mode="change_to", change_to=1000., bit=-1, img_inds=[], 
-                    layers=[], debug=False, inj_sites=[], sample_correct=True):
+                    layers=[], debug=False, inj_sites=[], sample_correct=True, sites_method=""):
         print("Full injecting...")
         
         self.log("Starting new injection")
@@ -560,8 +560,12 @@ class ModelInjection():
                 injs = []
 
             # get the random index (pass in the loop object for this layer)
-            sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
-            # sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs)
+            if not sites_method or sites_method == "loop":
+                sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
+            elif sites_method == "region":
+                sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs)
+            else:
+                assert(False)
             # if bit is passed as range, then sample random bits (one for each sample)
             if type(bit) is range:
                 bit = self.get_rand_bits(bit, total_num*num_imgs)
