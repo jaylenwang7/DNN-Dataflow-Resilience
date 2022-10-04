@@ -167,8 +167,9 @@ class InjectModel(nn.Module):
             output.copy_(torch.clamp(output, min=min_val, max=max_val))
         
         # add the resulting max and min, to see if the clamp worked, for debugging purposes
-        self.maxes = torch.amax(output, dim=(1, 2, 3)).to("cpu").tolist()
-        self.mins = torch.amin(output, dim=(1, 2, 3)).to("cpu").tolist()
+        output_dims = list(range(1, len(output.size())))
+        self.maxes = torch.amax(output, dim=output_dims).to("cpu").tolist()
+        self.mins = torch.amin(output, dim=output_dims).to("cpu").tolist()
             
         # 5 ===========
         if self.layer_ind == self.layer_id or self.all_outs:

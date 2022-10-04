@@ -69,11 +69,11 @@ class ModelInjection():
         self.get_inject_layers()
     
     def set_device(self, use_cpu=False):
-        if use_cpu:
+        if not torch.cuda.is_available() or use_cpu:
             device = torch.device("cpu")
             print("Using device: CPU" )
         else:
-            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            device = torch.device("cuda:0")
             print("Using device: " + torch.cuda.get_device_name(device))
         self.device = device
         self.net.to(self.device)

@@ -1,6 +1,6 @@
 from dataset import get_dataset
 from helpers import *
-from info_model import get_layer_info
+from info_model import get_layer_info, print_layer_sizes
 from loop import Loop
 from model_injection import ModelInjection
 from plotter import Plotter, combine_plots
@@ -561,6 +561,7 @@ if __name__=="__main__":
     Prints a table with layer sizes and layer ids
     '''
     # print_layer_sizes(get_alexnet(), get_dataset, 'alexnet')
+    # print_layer_sizes(get_resnet18(), get_dataset, 'resnet18')
     
     
     '''
@@ -572,7 +573,7 @@ if __name__=="__main__":
     '''
     Automatically constructs the loops from given mappings and runs an injection experiment
     '''
-    # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="i", num_imgs=20, batch_size=1)
+    run_injection(get_resnet18, "resnet18", "eyeriss", d_type="i", num_imgs=20, batch_size=1, layers=[20], add_on="TEST")
     # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="w", num_imgs=20)
     # run_injection(get_alexnet, "alexnet", "eyeriss", d_type="o", num_imgs=20)
     

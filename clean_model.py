@@ -47,8 +47,8 @@ class CleanModel(nn.Module):
         # if at target layer, then record the output and zeros
         if self.layer_ind == self.target_id or self.target_id == -1:
             self.clean_outputs.append(output.detach().clone())
-            self.input_zeros.append((num_nonzeros(input_value[0], dims=(1, 2, 3)), input_value[0][0].numel()))
-            self.output_zeros.append((num_nonzeros(output, dims=(1, 2, 3)), output[0].numel()))
+            self.input_zeros.append((num_nonzeros(input_value[0], dims=list(range(1, len(input_value[0].size())))), input_value[0][0].numel()))
+            self.output_zeros.append((num_nonzeros(output, dims=list(range(1, len(output.size())))), output[0].numel()))
         else:
             self.clean_outputs.append(None)
             self.input_zeros.append(None)
