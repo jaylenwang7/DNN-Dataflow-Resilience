@@ -325,7 +325,7 @@ class Plotter():
             lst += [None] * (to_len-len(lst))
             return lst
         
-        row = [fancy_names[self.net_name], fancy_names[self.arch_name]] + pad_list(self.avg_errors) + pad_list(self.avg_sites) + pad_list(self.avg_rats) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + pad_list(zero_error, to_len=2) + pad_list(zero_samples.to_list(), to_len=2) + bit_error + [nsamples]
+        row = [fancy_names[self.net_name], fancy_names[self.arch_name]] + pad_list(self.avg_errors) + pad_list(self.avg_sites) + pad_list(self.avg_rats) + pad_list(thresh_error, to_len=2) + change_error + avg_vals + pad_list(zero_error, to_len=2) + pad_list(num_samples[3].to_list(), to_len=2) + bit_error + [nsamples]
         
         with open(self.stats_file) as inf:
             reader = csv.reader(inf.readlines())
