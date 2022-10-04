@@ -847,7 +847,6 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
         xentropys = loss(inj_outs, outs[2]).tolist()
         
     for i in range(num_outs):
-        out = inj_outs[i]
         row = [img_inds[i], 
                inj_ind, 
                inj_level, 
@@ -872,7 +871,7 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
             row += [None]
         
         if zeros:
-            row += [zeros]
+            row += [zeros[i]]
         else:
             row += [None]
         
