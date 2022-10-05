@@ -279,7 +279,6 @@ class Plotter():
         all_dfs = []
         for i in range(len(self.layers)):
             df = pd.read_csv(self.filenames[i])
-            nsamples += len(df)
             if "BitInd" not in df:
                 print(self.filenames[i])
                 assert(False)

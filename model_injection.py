@@ -871,7 +871,9 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
             row += [None]
         
         if zeros:
-            row += [((zeros[0][0][i], zeros[0][1]), (zeros[1][0][i], zeros[1][1]), (zeros[2][0][i], zeros[2][1]))]
+            row += [((zeros[0][0][i], zeros[0][1]), 
+                     (zeros[1][0][i], zeros[1][1]), 
+                     (zeros[2][0], zeros[2][1]))]
         else:
             row += [None]
         
