@@ -563,7 +563,7 @@ class ModelInjection():
             if not sites_method or sites_method == "loop":
                 sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
             elif sites_method == "region":
-                sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs)
+                sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs, n_regions=8)
             elif sites_method == "random":
                 sites, inj_inds, total_num = self.get_rand_sites(i, inj_inds=injs, n_samples=n_samples)
             else:
