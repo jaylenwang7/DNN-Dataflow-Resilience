@@ -504,7 +504,7 @@ class ModelInjection():
     # bit is for the bit to change - if is number, then will always inject into that one
     #   if is a range object, then is a range of bits to sample from
     def full_inject(self, num_imgs=100, mode="change_to", change_to=1000., bit=-1, img_inds=[], 
-                    layers=[], debug=False, inj_sites=[], sample_correct=True, sites_method=""):
+                    layers=[], debug=False, inj_sites=[], sample_correct=True, sites_method="", n_samples=None):
         print("Full injecting...")
         
         self.log("Starting new injection")
@@ -564,6 +564,8 @@ class ModelInjection():
                 sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
             elif sites_method == "region":
                 sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs)
+            elif sites_method == "random":
+                sites, inj_inds, total_num = self.get_rand_sites(i, inj_inds=injs, n_samples=n_samples)
             else:
                 assert(False)
             # if bit is passed as range, then sample random bits (one for each sample)
@@ -698,6 +700,47 @@ class ModelInjection():
     def get_inj_window(self, layer_ind, inj_ind):
         inject_loop = self.loops[layer_ind]
         return inject_loop.get_original_window(inj_ind)
+    
+    # num_injs is the number of injection locations
+    # per_sample is the number of samples to take from each injection location
+    # # n_points is the number of points within the output window to choose per sample
+    def get_rand_sites(self, layer_ind, num_injs=8, inj_inds=[], per_sample=100, n_points=2):
+        limits = self.get_layer_limits(layer_ind)
+        m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind]
+        stride = self.strides[layer_ind]
+        # get num_injs random indices
+        if not inj_inds:
+            self.log("Generated inj_inds for layer " + str(layer_ind))
+            inj_inds = self.get_rand_inds(limits, num_injs)
+        else:
+            self.log("Using given inj_inds for layer " + str(layer_ind))
+            # check that the injection indices passed in by the user are valid
+            # only need to do this if injecting into inputs
+            if self.d_type == 'i':
+                for inj in inj_inds:
+                    if not check_inj_ind(inj[1:], stride, (s, r)):
+                        raise Exception("Invalid injection given for the stride and weight size of the layer.")
+        
+        all_sites = []
+        total_num = 0
+        # loop through number of injection locations
+        for i in range(num_injs):
+            inj_ind = inj_inds[i]
+            # get the output window for this location
+            window = self.get_inj_window(layer_ind, inj_ind)
+            # get all the coordinates for that window 
+            coords = list(itertools.product(*window))
+            # pick per_sample random sets of coords
+            inj_sites = []
+            for j in range(per_sample):
+                # randomly choose n_points from the window
+                sites = random.sample(coords, n_points)
+                inj_sites.append(sites)
+                total_num += 1
+            all_sites.append(inj_sites)
+        
+        return all_sites, inj_inds, total_num
+        
                             
     # gets injection indices to use and samples a set of sites for each chosen index
     # must be called after get_layer_info
