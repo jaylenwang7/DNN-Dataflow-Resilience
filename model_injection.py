@@ -23,7 +23,7 @@ class ModelInjection():
     # constructor
     def __init__(self, get_net: callable, dataset, net_name, arch_name, loops, d_type='i', 
                  verbose=False, overwrite=False, maxes=[], mins=[], file_addon='', debug=False, 
-                 max_range=True, layers=[], top_dir="", batch_size=1, use_cpu=False):
+                 max_range=True, layers=[], top_dir="", batch_size=1, use_cpu=False, append=False):
         print("Constructing ModelInjection...")
         
         self.net = get_net()                    # given network
@@ -31,6 +31,7 @@ class ModelInjection():
         self.set_device(use_cpu)
         
         self.debug = debug
+        self.append = append
         self.max_range = max_range
         self.get_net = get_net                  # store function to get network
         self.dataset = dataset                  # dataset to get images from
@@ -118,7 +119,7 @@ class ModelInjection():
                     fields = self.fields
                     csvwriter.writerow(fields)
         
-    def get_filenames(self, file_addon: str, layers: List[int]=[]) -> None:
+    def get_filenames(self, file_addon: str, layers: List[int]=[], append=False) -> None:
         """Sets the filenames param - giving each layer a directory to operate out of and a csv file to output data into.
 
         Args:
@@ -148,7 +149,7 @@ class ModelInjection():
             temp_filenames[i] = filename
             
             # gets a new filename - as to not overwrite the other one
-            if not self.overwrite:
+            if not self.overwrite and not append:
                 filename, file_num = get_new_filename(filename)
                 addon = max(file_num, addon)
             else: # if overwrite just set filename
@@ -156,7 +157,7 @@ class ModelInjection():
                 self.filenames[i] = filename
         
         # if no overwrite - change filenames to new ones
-        if not self.overwrite:
+        if not self.overwrite and not append:
             # -1 means no addon
             if addon == -1:
                 addon = ""
@@ -504,7 +505,8 @@ class ModelInjection():
     # bit is for the bit to change - if is number, then will always inject into that one
     #   if is a range object, then is a range of bits to sample from
     def full_inject(self, num_imgs=100, mode="change_to", change_to=1000., bit=-1, img_inds=[], 
-                    layers=[], debug=False, inj_sites=[], sample_correct=True, sites_method="", n_samples=None):
+                    layers=[], debug=False, inj_sites=[], sample_correct=True, sites_method="", 
+                    n_points=None, per_sample=None):
         print("Full injecting...")
         
         self.log("Starting new injection")
@@ -561,11 +563,11 @@ class ModelInjection():
 
             # get the random index (pass in the loop object for this layer)
             if not sites_method or sites_method == "loop":
-                sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs)
+                sites, inj_inds, total_num = self.get_rand_loop(i, inj_inds=injs, per_sample=per_sample)
             elif sites_method == "region":
                 sites, inj_inds, total_num = self.get_rand_region(i, inj_inds=injs, n_regions=8)
             elif sites_method == "random":
-                sites, inj_inds, total_num = self.get_rand_sites(i, inj_inds=injs, n_samples=n_samples)
+                sites, inj_inds, total_num = self.get_rand_sites(i, inj_inds=injs, per_sample=per_sample, n_points=n_points)
             else:
                 assert(False)
             # if bit is passed as range, then sample random bits (one for each sample)
@@ -701,10 +703,28 @@ class ModelInjection():
         inject_loop = self.loops[layer_ind]
         return inject_loop.get_original_window(inj_ind)
     
+    def get_window_size(self, layer_ind, inj_ind=None):
+        if inj_ind is None:
+            limits = self.get_layer_limits(layer_ind)
+            # limits is a list of ranges, pick middle value for each
+            inj_ind = [l[len(l)//2] for l in limits]
+        inject_loop = self.loops[layer_ind]
+        window = inject_loop.get_original_window(inj_ind)
+        size = 1
+        for w in window:
+            size *= len(w)
+        return size
+    
     # num_injs is the number of injection locations
     # per_sample is the number of samples to take from each injection location
     # # n_points is the number of points within the output window to choose per sample
     def get_rand_sites(self, layer_ind, num_injs=8, inj_inds=[], per_sample=100, n_points=2):
+        if per_sample is None:
+            per_sample = 100
+        if n_points is None:
+            n_points = 2
+        if num_injs is None:
+            num_injs = 8
         limits = self.get_layer_limits(layer_ind)
         m, c, s, r, q, p, h, w = self.layer_sizes[layer_ind]
         stride = self.strides[layer_ind]
@@ -737,7 +757,7 @@ class ModelInjection():
                 sites = random.sample(coords, n_points)
                 inj_sites.append(sites)
                 total_num += 1
-            all_sites.append(inj_sites)
+            all_sites.append([inj_sites])
         
         return all_sites, inj_inds, total_num
         

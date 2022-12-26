@@ -373,7 +373,8 @@ def pick_level_names(arch_name:str, d_type:str='i'):
     
 def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: str="i", layers: List=[], inj_inds: List=[], 
                   overwrite: bool=False, print_loops: bool=False, map_dir: str="", num_imgs=-1, label_path: str="", img_path: str="", 
-                  timeloop_map_dir="", out_dir="", use_cpu=False, batch_size=1, img_inds=[], add_on="", loops=None, sites_method="", n_samples=None):
+                  timeloop_map_dir="", out_dir="", use_cpu=False, batch_size=1, img_inds=[], add_on="", loops=None, sites_method="", 
+                  per_sample=None, n_points=None, random=False):
     """Function to run an injection experiment with the given network and arch. See README for how the data is outputted. 
 
     Args:
@@ -425,9 +426,24 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
     # start the injection by creating a ModelInjection and then running full_inject
     mod_inj = ModelInjection(get_net, dataset, model_name, arch_name, loops, maxes=maxes, mins=mins, 
                              overwrite=overwrite, debug=debug, d_type=d_type, max_range=True, 
-                             batch_size=batch_size, top_dir=out_dir, file_addon=add_on, use_cpu=use_cpu)
+                             batch_size=batch_size, top_dir=out_dir, file_addon=add_on, use_cpu=use_cpu, append=True)
+    if random:
+        for i, layer in enumerate(layers):
+            max_size = mod_inj.get_window_size(layer)
+            size = 1
+            overflow = False
+            layers = [layer]
+            while not overflow:
+                correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, 
+                                                   layers=layers, num_imgs=num_imgs, sites_method="random", per_sample=per_sample, n_points=size)
+                size *= 2
+                if size > max_size:
+                    size = max_size
+                    overflow = True
+        return
+            
     correct_rate = mod_inj.full_inject(mode="bit", bit=range(1, 9), img_inds=img_inds, debug=debug, inj_sites=inj_inds, 
-                                       layers=layers, num_imgs=num_imgs, sites_method=sites_method, n_samples=n_samples)
+                                       layers=layers, num_imgs=num_imgs, sites_method=sites_method, per_sample=per_sample, n_points=n_points)
     print(correct_rate)
     
 
@@ -596,5 +612,21 @@ if __name__=="__main__":
     '''
     # plot_all(d_type='i')
     
+    get_net = get_resnet18
+    net_name = "resnet18"
+    arch_name = "eyeriss"
+    d_type = "i"
+    add_on = "random"
+    layers = [5]
+
+    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
+                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                  batch_size=40, use_cpu=True, sites_method="random", add_on=add_on,
+                  per_sample=1, overwrite=False, random=True, layers=layers)
+
+    maxmin = pick_maxmin(net_name)
+
+    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on="_" + add_on, layers=layers)
+    print(plotter.get_groupby("Site_ID"))
     
     pass
