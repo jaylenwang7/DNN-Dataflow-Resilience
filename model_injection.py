@@ -119,7 +119,7 @@ class ModelInjection():
                     fields = self.fields
                     csvwriter.writerow(fields)
         
-    def get_filenames(self, file_addon: str, layers: List[int]=[], append=False) -> None:
+    def get_filenames(self, file_addon: str, layers: List[int]=[]) -> None:
         """Sets the filenames param - giving each layer a directory to operate out of and a csv file to output data into.
 
         Args:
@@ -149,7 +149,7 @@ class ModelInjection():
             temp_filenames[i] = filename
             
             # gets a new filename - as to not overwrite the other one
-            if not self.overwrite and not append:
+            if not self.overwrite and not self.append:
                 filename, file_num = get_new_filename(filename)
                 addon = max(file_num, addon)
             else: # if overwrite just set filename
@@ -157,7 +157,7 @@ class ModelInjection():
                 self.filenames[i] = filename
         
         # if no overwrite - change filenames to new ones
-        if not self.overwrite and not append:
+        if not self.overwrite and not self.append:
             # -1 means no addon
             if addon == -1:
                 addon = ""
