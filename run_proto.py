@@ -630,22 +630,24 @@ if __name__=="__main__":
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                   per_sample=1, overwrite=False, random=True, layers=layers)
 
-    run_injection(get_net, net_name, "efficientnet_b0", d_type="i", num_imgs=1,
+    net_name = "efficientnet-b0"
+    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                   per_sample=1, overwrite=False, random=True, layers=layers)
 
-    run_injection(get_net, net_name, "efficientnet_b0", d_type="w", num_imgs=1,
+    run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                   per_sample=1, overwrite=False, random=True, layers=layers)
 
-    run_injection(get_net, net_name, "deit_tiny", d_type="i", num_imgs=1,
+    net_name = "deit_tiny"
+    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                   per_sample=1, overwrite=False, random=True, layers=layers)
 
-    run_injection(get_net, net_name, "deit_tiny", d_type="w", num_imgs=1,
+    run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                   per_sample=1, overwrite=False, random=True, layers=layers)
