@@ -9,7 +9,7 @@ from max_model import get_range
 from typing import Callable, List
 
 
-IMAGENET_IMGS_PATH = "./ImageNet/val_images"
+IMAGENET_IMGS_PATH = "/datasets/shared/imagenet/ILSVRC2015/Data/CLS-LOC/val/"
 IMAGENET_LABELS_PATH = "./ImageNet/validation_labels.csv"
 
 '''
