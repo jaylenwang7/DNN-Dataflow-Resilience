@@ -619,38 +619,39 @@ if __name__=="__main__":
     add_on = "random"
     use_cpu = False
     layers = []
+    per_sample = 1000
 
     run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
     
     run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
 
-    net_name = "efficientnet-b0"
+    net_name = "efficientnet_b0"
     run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
 
     run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
 
     net_name = "deit_tiny"
     run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
 
     run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=1, overwrite=False, random=True, layers=layers)
+                  per_sample=per_sample, overwrite=False, random=True, layers=layers)
 
     maxmin = pick_maxmin(net_name)
 
