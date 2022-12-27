@@ -20,7 +20,7 @@ class InjectModel(nn.Module):
         self.mode = -1
         self.bit = -1
         self.change_to = 1000.
-        self.pre_values = []
+        self.pre_values = []            # list of values before injection, one
         self.post_values = []
         self.max_vals = []
         self.min_vals = []
@@ -147,6 +147,7 @@ class InjectModel(nn.Module):
                 # if empty list is given - then just directly copy (don't pick any sites)
                 output.copy_(faulty_output)
         else:
+            # if it's an output injection - then just do the bitflip at the output site
             for i in range(batch_size):
                 inject_val = output[i][self.inj_coord]
                 output[i][self.inj_coord] = self.bitflip_value(inject_val)
@@ -245,7 +246,9 @@ class InjectModel(nn.Module):
         return self.model(x)
     
     def reset_weight(self):
-        self.layer.weight[self.inj_coord] = self.pre_value
+        assert(self.d_type == 'w')
+        assert(len(self.pre_values) == 1)
+        self.layer.weight[self.inj_coord] = self.pre_value[0]
     
     # inject into a weight offline - so not as part of the hook function
     def inject_weight(self, inj_coord):

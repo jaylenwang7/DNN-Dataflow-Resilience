@@ -430,7 +430,7 @@ class ModelInjection():
                         # process outputs to output file
                         # NOTE: labels is returned as a list
                         process_outputs(inj_outs, img_batch, labels, inj_ind, inj_level, site_id, pre_vals, post_vals, 
-                                        num_sites, layer_id, bit_val, maxmins, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
+                                        num_sites, layer_id, bit_val, maxmins, self.d_type, outs=outputs, zeros=zeros, filename=self.get_filename(layer_id))
 
                         # increment after changing injection location
                         count += 1
@@ -902,7 +902,7 @@ def get_topk(outs, labels, k=5):
 
 # outs = [clean layer outputs, injected layer outputs, final clean output]
 def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre_vals, post_vals, num_sites,
-                    layer_id, bit, maxmins, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
+                    layer_id, bit, maxmins, d_type, outs=[], zeros=[], k=5, filename="", log_file="debug_log.txt"):
     
     num_outs = inj_outs.shape[0]
     assert(num_outs == len(img_inds))
@@ -911,7 +911,16 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
     if outs:
         loss = nn.CrossEntropyLoss(reduction='none')
         xentropys = loss(inj_outs, outs[2]).tolist()
-        
+    
+    if d_type == 'i':
+        assert(len(pre_vals) == len(num_outs))
+        assert(len(post_vals) == len(num_outs))
+    elif d_type == 'w':
+        assert(len(pre_vals) == 1)
+        assert(len(post_vals) == 1)
+        pre_vals = [pre_vals[0] for i in range(num_outs)]
+        post_vals = [post_vals[0] for i in range(num_outs)]
+    
     for i in range(num_outs):
         row = [img_inds[i], 
                inj_ind, 
