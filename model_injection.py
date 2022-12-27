@@ -237,7 +237,7 @@ class ModelInjection():
         self.strides = strides
         self.FC_sizes = FC_sizes
     
-    def get_layer_nums(self) -> int:
+    def get_num_layers(self) -> int:
         return self.num_layers
 
     # debugging function that checks whether 
