@@ -912,9 +912,9 @@ def process_outputs(inj_outs, img_inds, labels, inj_ind, inj_level, site_id, pre
         loss = nn.CrossEntropyLoss(reduction='none')
         xentropys = loss(inj_outs, outs[2]).tolist()
     
-    if d_type == 'i':
-        assert(len(pre_vals) == len(num_outs))
-        assert(len(post_vals) == len(num_outs))
+    if d_type in ['i', 'o']:
+        assert(len(pre_vals) == num_outs)
+        assert(len(post_vals) == num_outs)
     elif d_type == 'w':
         assert(len(pre_vals) == 1)
         assert(len(post_vals) == 1)
