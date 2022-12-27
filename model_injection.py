@@ -757,7 +757,7 @@ class ModelInjection():
             inj_sites = []
             for j in range(per_sample):
                 # randomly choose n_points from the window
-                sites = random.sample(coords, n_points)
+                sites = random.sample(coords, min(n_points, len(coords)))
                 inj_sites.append(sites)
                 total_num += 1
             all_sites.append([inj_sites])
