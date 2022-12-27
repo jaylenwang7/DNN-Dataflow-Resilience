@@ -623,6 +623,7 @@ if __name__=="__main__":
     layers = []
     per_sample = 1000
 
+    layers = [i for i in range(16, 20)]
     run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=1,
                   img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                   batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
