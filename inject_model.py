@@ -248,13 +248,13 @@ class InjectModel(nn.Module):
     def reset_weight(self):
         assert(self.d_type == 'w')
         assert(len(self.pre_values) == 1)
-        self.layer.weight[self.inj_coord] = self.pre_value[0]
+        self.layer.weight[self.inj_coord] = self.pre_values[0]
     
     # inject into a weight offline - so not as part of the hook function
     def inject_weight(self, inj_coord):
         assert(self.d_type == 'w')
         # if the weight has been injected, reset the weights to the original value
-        if not self.pre_value == []:
+        if not self.pre_values == []:
             self.reset_weight()
         
         # update inj_coord
