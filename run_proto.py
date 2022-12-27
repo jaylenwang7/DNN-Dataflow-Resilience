@@ -428,6 +428,8 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
                              overwrite=overwrite, debug=debug, d_type=d_type, max_range=True, 
                              batch_size=batch_size, top_dir=out_dir, file_addon=add_on, use_cpu=use_cpu, append=True)
     if random:
+        if not layers:
+            layers = [i for i in range(mod_inj.get_num_layers())]
         for i, layer in enumerate(layers):
             max_size = mod_inj.get_window_size(layer)
             size = 1

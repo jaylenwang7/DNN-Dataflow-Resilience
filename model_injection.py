@@ -236,6 +236,9 @@ class ModelInjection():
         self.paddings = paddings
         self.strides = strides
         self.FC_sizes = FC_sizes
+    
+    def get_layer_nums(self) -> int:
+        return self.num_layers
 
     # debugging function that checks whether 
     def check_sites(self, sites, layer_id: int, inj_ind) -> None:
