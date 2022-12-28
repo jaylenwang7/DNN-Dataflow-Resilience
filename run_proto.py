@@ -7,7 +7,7 @@ from plotter import Plotter, combine_plots
 from timeloop_parser import get_loops, move_maps
 from max_model import get_range
 from typing import Callable, List
-
+import sys
 
 IMAGENET_IMGS_PATH = "/datasets/shared/imagenet/ILSVRC2015/Data/CLS-LOC/val/"
 IMAGENET_LABELS_PATH = "./ImageNet/validation_labels.csv"
@@ -574,6 +574,12 @@ def plot_all(d_type: str = 'i'):
 
 
 if __name__=="__main__":
+
+    # get first command line argument
+    arg = None
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        arg = int(arg) if arg.isdigit() else arg
     
     '''
     Prints a table with layer sizes and layer ids
@@ -621,45 +627,47 @@ if __name__=="__main__":
     per_sample = 10
     num_imgs = 1000
 
-    get_net = get_resnet18
-    net_name = "resnet18"
-    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
-    
-    run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+    if arg == 0:
+        get_net = get_resnet18
+        net_name = "resnet18"
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        
+        layers = []
+        get_net = get_deit_tiny
+        net_name = "deit_tiny"
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
-    get_net = get_efficientnet_b0
-    net_name = "efficientnet_b0"
-    efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
-    for i in range(82):
-        if i not in efficientnet_dw_layers:
-            layers.append(i)
-    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+    else: 
+        get_net = get_efficientnet_b0
+        net_name = "efficientnet_b0"
+        efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
+        for i in range(82):
+            if i not in efficientnet_dw_layers:
+                layers.append(i)
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
-    run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
-    layers = []
-    get_net = get_deit_tiny
-    net_name = "deit_tiny"
-    run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
-
-    run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                  img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                  batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                  per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
     
     pass
