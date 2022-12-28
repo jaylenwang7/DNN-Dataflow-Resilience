@@ -628,6 +628,7 @@ if __name__=="__main__":
     num_imgs = 1000
 
     if arg == 0:
+        print("first")
         get_net = get_resnet18
         net_name = "resnet18"
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
@@ -653,6 +654,7 @@ if __name__=="__main__":
                     batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                     per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
     else: 
+        print("second")
         get_net = get_efficientnet_b0
         net_name = "efficientnet_b0"
         efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
