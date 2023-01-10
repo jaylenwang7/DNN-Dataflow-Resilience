@@ -629,21 +629,22 @@ if __name__=="__main__":
 
     if arg == 0:
         print("first")
-        get_net = get_resnet18
-        net_name = "resnet18"
-        layers = [i for i in range(9, 21)]
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        # get_net = get_resnet18
+        # net_name = "resnet18"
+        # layers = [i for i in range(9, 21)]
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
         
         layers = []
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
-        
-        layers = []
+        layers.append(i for i in range(37, 50))
         get_net = get_deit_tiny
         net_name = "deit_tiny"
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
@@ -651,6 +652,7 @@ if __name__=="__main__":
                     batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
                     per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
+        layers = []
         run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                     img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                     batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
@@ -659,17 +661,17 @@ if __name__=="__main__":
         print("second")
         get_net = get_efficientnet_b0
         net_name = "efficientnet_b0"
-        efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
-        for i in range(20, 82):
-            if i not in efficientnet_dw_layers:
-                layers.append(i)
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        # efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
+        # for i in range(20, 82):
+        #     if i not in efficientnet_dw_layers:
+        #         layers.append(i)
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
         efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
-        for i in range(82):
+        for i in range(5, 82):
             if i not in efficientnet_dw_layers:
                 layers.append(i)
         run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
