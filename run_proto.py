@@ -643,8 +643,7 @@ if __name__=="__main__":
         #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
         #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
         
-        layers = []
-        layers.append(i for i in range(37, 50))
+        layers = [i for i in range(37, 50)]
         get_net = get_deit_tiny
         net_name = "deit_tiny"
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
