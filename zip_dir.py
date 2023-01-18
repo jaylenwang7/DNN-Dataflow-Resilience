@@ -5,7 +5,7 @@ import shutil
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('dir', help='Directory to zip')
-    parser.add_argument('zip', type=str, default=None, help='Zip file to create')
+    parser.add_argument('--zip', type=str, default=None, help='Zip file to create')
     return parser.parse_args()
 
 def main():
