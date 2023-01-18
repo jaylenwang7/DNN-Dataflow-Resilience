@@ -12,7 +12,7 @@ def main():
     args = parse_args()
     # zip all files in the directory, extract to current directory
     zipfile = args.dir if args.zip is None else args.zip
-    shutil.make_archive(args.zip, 'zip', args.dir)
+    shutil.make_archive(zipfile, 'zip', args.dir)
 
 if __name__ == '__main__':
     main()
