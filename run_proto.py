@@ -627,6 +627,14 @@ if __name__=="__main__":
     per_sample = 10
     num_imgs = 1000
 
+    net_name = "resnet18"
+    maxmin = pick_maxmin(net_name)
+    d_type = "i"
+    overwrite = False
+    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=add_on, layers=layers, overwrite=overwrite)
+    out_rates, nsamples = plotter.get_groupby("num_sites")
+    print(out_rates)
+    assert(False)
     if arg == 0:
         print("first")
         # get_net = get_resnet18
