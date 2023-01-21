@@ -631,7 +631,7 @@ if __name__=="__main__":
     maxmin = pick_maxmin(net_name)
     d_type = "i"
     overwrite = False
-    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=add_on, layers=layers, overwrite=overwrite)
+    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"{add_on}_", layers=layers, overwrite=overwrite)
     out_rates, nsamples = plotter.get_groupby("num_sites")
     print(out_rates)
     assert(False)
