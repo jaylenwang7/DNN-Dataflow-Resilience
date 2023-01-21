@@ -632,7 +632,7 @@ if __name__=="__main__":
     d_type = "i"
     overwrite = False
     plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
-    out_rates, nsamples = plotter.get_groupby("NumSites")
+    out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False)
     print(out_rates)
     assert(False)
     if arg == 0:

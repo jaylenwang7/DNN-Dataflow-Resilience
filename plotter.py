@@ -285,7 +285,7 @@ class Plotter():
             all_dfs.append(df)
         return pd.concat(all_dfs)
     
-    def get_groupby(self, cols, df=None, to_average="ClassifiedCorrect"):
+    def get_groupby(self, cols, df=None, to_average="ClassifiedCorrect", to_list=True):
         if df is None:
             df = self.get_df()
         
@@ -302,7 +302,11 @@ class Plotter():
             groups = df.groupby(col)
             num_samples = groups.size()
             n_samples.append(num_samples)
-            out_rates.append((groups[to_average].sum() / num_samples).tolist())
+            avg = groups[to_average].sum() / num_samples
+            if to_list:
+                out_rates.append(avg.tolist())
+            else:
+                out_rates.append(avg)
         return out_rates, n_samples
         
     def collect_stats(self, thresh=2.0):
