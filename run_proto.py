@@ -634,8 +634,8 @@ if __name__=="__main__":
     plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
     out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=5)
     print(out_rates)
-    print(type(out_rates))
-    out_rates.to_pickle(f"out_rates_{arch_name}_{net_name}_{d_type}_{add_on}.pkl")
+    print(type(out_rates[0]))
+    out_rates[0].to_pickle(f"out_rates_{arch_name}_{net_name}_{d_type}_{add_on}.pkl")
     assert(False)
     if arg == 0:
         print("first")
