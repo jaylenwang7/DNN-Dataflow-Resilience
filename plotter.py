@@ -275,7 +275,7 @@ class Plotter():
     # fields used for stats files - NOTE: SEE README FOR DESCRIPTIONS OF STATS
     fields = ["Model", "Arch", "Err0", "Err1", "Err2", "Sites0", "Sites1", "Sites2", "Rat0", "Rat1", "Rat2", "Within", "Outside", "1to0", "0to1", "AvgPreval", "AvgPostval", "AvgDiff", "NonZeroRate", "ZeroRate", "NumNonZero", "NumZero", "Bit1", "Bit2", "Bit3", "Bit4", "Bit5", "Bit6", "Bit7", "Bit8", "NumSamples"]
     
-    def get_df(self):
+    def get_df(self, concat=True):
         all_dfs = []
         for i in range(len(self.layers)):
             df = pd.read_csv(self.filenames[i])
@@ -283,11 +283,17 @@ class Plotter():
                 print(self.filenames[i])
                 assert(False)
             all_dfs.append(df)
-        return pd.concat(all_dfs)
+        if concat:
+            return pd.concat(all_dfs)
+        else:
+            return all_dfs
     
-    def get_groupby(self, cols, df=None, to_average="ClassifiedCorrect", to_list=True):
+    def get_groupby(self, cols, df=None, to_average="ClassifiedCorrect", to_list=True, layer=None):
         if df is None:
-            df = self.get_df()
+            df = self.get_df(concat=layer is None)
+            if layer is not None:
+                assert(layer < len(self.layers))
+                df = df[layer]
         
         if isinstance(cols, str):
             cols = [cols]
