@@ -641,7 +641,7 @@ if __name__=="__main__":
             print(f"Layers: {layers}", flush=True)
             for layer in layers:
                 dir = f"data_results_pickle/{net_name}/layer_{layer}/"
-                if os.exists(f"{dir}{d_type_name}_rates.pkl"):
+                if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
                     print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                     continue
                 out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
