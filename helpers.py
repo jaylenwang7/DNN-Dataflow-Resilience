@@ -101,10 +101,7 @@ def get_pickle(filename:str):
 
 def open_path(path):
     p = Path(path)
-    if p.is_dir():
-        p.mkdir(parents=True, exist_ok=True)
-    else:
-        p.parent.mkdir(parents=True, exist_ok=True)
+    p.mkdir(parents=True, exist_ok=True)
 
 def delete_files(dir, filename):
     files = Path(dir).glob("**/" + filename)
