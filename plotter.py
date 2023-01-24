@@ -293,7 +293,7 @@ class Plotter():
         if df is None:
             df = self.get_df(concat=layer is None)
             if layer is not None:
-                assert(layer < len(self.layers))
+                assert(layer in self.layers)
                 df = df[layer]
         
         if isinstance(cols, str):
