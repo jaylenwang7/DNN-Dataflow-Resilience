@@ -629,20 +629,20 @@ if __name__=="__main__":
 
     net_names = ["efficientnet_b0", "deit_tiny"]
     d_types = ["i", "w"]
-    print("starting...")
+    print("starting...", flush=True)
     for net_name in net_names:
         maxmin = pick_maxmin(net_name)
         for d_type in d_types:
             d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
-            print(f"Getting data for {net_name} for {d_type} data")
+            print(f"Getting data for {net_name} for {d_type} data", flush=True)
             overwrite = False
             plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
             layers = plotter.layers
-            print(f"Layers: {layers}")
+            print(f"Layers: {layers}", flush=True)
             for layer in layers:
                 dir = f"data_results_pickle/{net_name}/layer_{layer}/"
                 if os.exists(f"{dir}{d_type_name}_rates.pkl"):
-                    print(f"Skipping layer {layer} for {net_name} for {d_type} data")
+                    print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                     continue
                 out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
                 open_path(dir)
