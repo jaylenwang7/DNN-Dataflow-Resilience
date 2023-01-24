@@ -99,6 +99,13 @@ def get_pickle(filename:str):
     with open(filename, 'rb') as f:
         pickle.load(f)
 
+def open_path(path):
+    p = Path(path)
+    if p.is_dir():
+        p.mkdir(parents=True, exist_ok=True)
+    else:
+        p.parent.mkdir(parents=True, exist_ok=True)
+
 def delete_files(dir, filename):
     files = Path(dir).glob("**/" + filename)
     for file in files:

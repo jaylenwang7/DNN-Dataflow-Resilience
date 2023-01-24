@@ -627,15 +627,21 @@ if __name__=="__main__":
     per_sample = 10
     num_imgs = 1000
 
-    net_name = "resnet18"
-    maxmin = pick_maxmin(net_name)
-    d_type = "i"
-    overwrite = False
-    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
-    out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=5)
-    print(out_rates)
-    print(type(out_rates[0]))
-    out_rates[0].to_pickle(f"out_rates_{arch_name}_{net_name}_{d_type}_{add_on}.pkl")
+    net_names = ["alexnet", "resnet18", "efficientnet_b0", "deit_tiny"]
+    d_types = ["i", "w"]
+    for net_name in net_names:
+        maxmin = pick_maxmin(net_name)
+        for d_type in d_types:
+            d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
+            print(f"Getting data for {net_name} for {d_type} data")
+            overwrite = False
+            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
+            layers = plotter.layers
+            for layer in layers:
+                out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
+                dir = f"data_results/{net_name}/layer_{layer}/"
+                open_path(dir)
+                out_rates[0].to_pickle(f"{dir}{d_type_name}_rates.pkl")
     assert(False)
     if arg == 0:
         print("first")
