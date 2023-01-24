@@ -642,12 +642,14 @@ if __name__=="__main__":
             print(f"Layers: {layers}", flush=True)
             for layer in layers:
                 dir = f"data_results_pickle/{net_name}/layer_{layer}/"
+                out_file = f"{dir}{d_type_name}_rates.pkl"
+                print("Outputing to: " + out_file, flush=True)
                 if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
                     print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                     continue
                 out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
                 open_path(dir)
-                out_rates[0].to_pickle(f"{dir}{d_type_name}_rates.pkl")
+                out_rates[0].to_pickle(out_file)
     assert(False)
     if arg == 0:
         print("first")
