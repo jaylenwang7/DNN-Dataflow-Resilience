@@ -629,6 +629,7 @@ if __name__=="__main__":
 
     net_names = ["alexnet", "resnet18", "efficientnet_b0", "deit_tiny"]
     d_types = ["i", "w"]
+    print("starting...")
     for net_name in net_names:
         maxmin = pick_maxmin(net_name)
         for d_type in d_types:
@@ -639,7 +640,7 @@ if __name__=="__main__":
             layers = plotter.layers
             for layer in layers:
                 out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
-                dir = f"data_results/{net_name}/layer_{layer}/"
+                dir = f"data_results_pickle/{net_name}/layer_{layer}/"
                 open_path(dir)
                 out_rates[0].to_pickle(f"{dir}{d_type_name}_rates.pkl")
     assert(False)
