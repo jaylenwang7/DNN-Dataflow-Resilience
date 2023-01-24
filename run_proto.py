@@ -627,7 +627,7 @@ if __name__=="__main__":
     per_sample = 10
     num_imgs = 1000
 
-    net_names = ["alexnet", "resnet18", "efficientnet_b0", "deit_tiny"]
+    net_names = ["efficientnet_b0", "deit_tiny"]
     d_types = ["i", "w"]
     print("starting...")
     for net_name in net_names:
@@ -638,9 +638,13 @@ if __name__=="__main__":
             overwrite = False
             plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
             layers = plotter.layers
+            print(f"Layers: {layers}")
             for layer in layers:
-                out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
                 dir = f"data_results_pickle/{net_name}/layer_{layer}/"
+                if os.exists(f"{dir}{d_type_name}_rates.pkl"):
+                    print(f"Skipping layer {layer} for {net_name} for {d_type} data")
+                    continue
+                out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
                 open_path(dir)
                 out_rates[0].to_pickle(f"{dir}{d_type_name}_rates.pkl")
     assert(False)
