@@ -627,7 +627,7 @@ if __name__=="__main__":
     per_sample = 10
     num_imgs = 1000
 
-    net_names = ["efficientnet_b0", "deit_tiny"]
+    net_names = ["deit_tiny"]
     d_types = ["i", "w"]
     print("starting...", flush=True)
     for net_name in net_names:
@@ -636,7 +636,7 @@ if __name__=="__main__":
             d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
             print(f"Getting data for {net_name} for {d_type} data", flush=True)
             overwrite = False
-            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, 
+            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=[], 
                               overwrite=overwrite, skip_extract=True)
             layers = plotter.layers
             print(f"Layers: {layers}", flush=True)
