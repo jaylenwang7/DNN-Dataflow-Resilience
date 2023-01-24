@@ -18,7 +18,7 @@ MARKER_SIZE = 8
 # object used to plot data
 class Plotter():
     
-    def __init__(self, arch_name, net_name, max_mins, layers=[], d_type='i', add_on='', overwrite=True):
+    def __init__(self, arch_name, net_name, max_mins, layers=[], d_type='i', add_on='', overwrite=True, skip_extract=False):
         self.arch_name = arch_name
         self.layers = layers
         self.net_name = net_name
@@ -51,7 +51,8 @@ class Plotter():
         self.sparsity = []
             
         self.set_filenames(add_on)
-        self.extract_data(max_mins)
+        if not skip_extract:
+            self.extract_data(max_mins)
         
     def set_overwrite(self, overwrite):
         self.overwrite = overwrite
