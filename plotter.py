@@ -278,16 +278,18 @@ class Plotter():
     
     def get_df(self, concat=True):
         all_dfs = []
-        for i in range(len(self.layers)):
+        df_dict = {}
+        for i, layer in enumerate(self.layers):
             df = pd.read_csv(self.filenames[i])
             if "BitInd" not in df:
                 print(self.filenames[i])
                 assert(False)
             all_dfs.append(df)
+            df_dict[layer] = df
         if concat:
             return pd.concat(all_dfs)
         else:
-            return all_dfs
+            return df_dict
     
     def get_groupby(self, cols, df=None, to_average="ClassifiedCorrect", to_list=True, layer=None):
         if df is None:
