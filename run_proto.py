@@ -636,7 +636,8 @@ if __name__=="__main__":
             d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
             print(f"Getting data for {net_name} for {d_type} data", flush=True)
             overwrite = False
-            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, overwrite=overwrite)
+            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=layers, 
+                              overwrite=overwrite, skip_extract=True)
             layers = plotter.layers
             print(f"Layers: {layers}", flush=True)
             for layer in layers:
