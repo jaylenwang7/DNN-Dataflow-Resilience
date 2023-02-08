@@ -719,7 +719,7 @@ if __name__=="__main__":
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
                     img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                     batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, layers=layers)
+                    overwrite=False, append=True, layers=layers)
 
     
     pass

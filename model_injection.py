@@ -722,7 +722,7 @@ class ModelInjection():
     # per_sample is the number of samples to take from each injection location
     # # n_points is the number of points within the output window to choose per sample
     def get_rand_sites(self, layer_ind, num_injs=8, inj_inds=[], per_sample=100, n_points=2):
-        if per_sample is None:
+        if per_sample is None or not per_sample:
             per_sample = 100
         if n_points is None:
             n_points = 2
