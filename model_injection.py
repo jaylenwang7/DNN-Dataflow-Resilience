@@ -772,6 +772,8 @@ class ModelInjection():
     # total injections per image = per_sample*num_injs*num_levels
     # so num_injs*per_sample*num_level samples
     def get_rand_loop(self, layer_ind, inj_inds=[], per_sample=4, num_injs=8):
+        if per_sample is None or not per_sample:
+            per_sample = 8
         print("Get randing...")
         inject_loop = self.loops[layer_ind]
         limits = self.get_layer_limits(layer_ind)
