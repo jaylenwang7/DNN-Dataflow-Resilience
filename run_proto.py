@@ -621,36 +621,36 @@ if __name__=="__main__":
     # plot_all(d_type='i')
     
     arch_name = "eyeriss"
-    add_on = "random_sites_again"
+    add_on = "loop_sites"
     use_cpu = False
     layers = []
-    per_sample = 10
+    # per_sample = 10
     num_imgs = 1000
 
-    net_names = ["deit_tiny"]
-    d_types = ["i", "w"]
-    print("starting...", flush=True)
-    for net_name in net_names:
-        maxmin = pick_maxmin(net_name)
-        for d_type in d_types:
-            d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
-            print(f"Getting data for {net_name} for {d_type} data", flush=True)
-            overwrite = False
-            plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=[], 
-                              overwrite=overwrite, skip_extract=True)
-            layers = plotter.layers
-            print(f"Layers: {layers}", flush=True)
-            for layer in layers:
-                dir = f"data_results_pickle/{net_name}/layer_{layer}/"
-                out_file = f"{dir}{d_type_name}_rates.pkl"
-                print("Outputing to: " + out_file, flush=True)
-                if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
-                    print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
-                    continue
-                out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
-                open_path(dir)
-                out_rates[0].to_pickle(out_file)
-    assert(False)
+    # net_names = ["deit_tiny"]
+    # d_types = ["i", "w"]
+    # print("starting...", flush=True)
+    # for net_name in net_names:
+    #     maxmin = pick_maxmin(net_name)
+    #     for d_type in d_types:
+    #         d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
+    #         print(f"Getting data for {net_name} for {d_type} data", flush=True)
+    #         overwrite = False
+    #         plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=[], 
+    #                           overwrite=overwrite, skip_extract=True)
+    #         layers = plotter.layers
+    #         print(f"Layers: {layers}", flush=True)
+    #         for layer in layers:
+    #             dir = f"data_results_pickle/{net_name}/layer_{layer}/"
+    #             out_file = f"{dir}{d_type_name}_rates.pkl"
+    #             print("Outputing to: " + out_file, flush=True)
+    #             if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
+    #                 print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
+    #                 continue
+    #             out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
+    #             open_path(dir)
+    #             out_rates[0].to_pickle(out_file)
+
     if arg == 0:
         print("first")
         # get_net = get_resnet18
@@ -667,23 +667,33 @@ if __name__=="__main__":
         #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
         #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
         
-        layers = [i for i in range(37, 50)]
-        get_net = get_deit_tiny
-        net_name = "deit_tiny"
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        # layers = [i for i in range(37, 50)]
+        # get_net = get_deit_tiny
+        # net_name = "deit_tiny"
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+
+        # ================================
+
+        get_net = get_alexnet
+        net_name = "alexnet"
         layers = []
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                      overwrite=False, append=True, layers=layers)
     else: 
         print("second")
-        get_net = get_efficientnet_b0
-        net_name = "efficientnet_b0"
+        # get_net = get_efficientnet_b0
+        # net_name = "efficientnet_b0"
         # efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
         # for i in range(20, 82):
         #     if i not in efficientnet_dw_layers:
@@ -693,27 +703,23 @@ if __name__=="__main__":
         #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
         #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
-        efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
-        for i in range(5, 82):
-            if i not in efficientnet_dw_layers:
-                layers.append(i)
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+        # efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
+        # for i in range(5, 82):
+        #     if i not in efficientnet_dw_layers:
+        #         layers.append(i)
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #             img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #             batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
+        #             per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
 
         get_net = get_alexnet
         net_name = "alexnet"
         layers = []
+        
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
                     img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
-        
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                    img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                    batch_size=40, use_cpu=use_cpu, sites_method="random", add_on=add_on,
-                    per_sample=per_sample, overwrite=False, append=True, random=True, layers=layers)
+                    batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                    per_sample=per_sample, overwrite=False, append=True, layers=layers)
 
     
     pass
