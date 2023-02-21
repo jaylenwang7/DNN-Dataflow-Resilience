@@ -783,7 +783,13 @@ class ModelInjection():
         # get num_injs random indices
         if not inj_inds:
             self.log("Generated inj_inds for layer " + str(layer_ind))
-            inj_inds = self.get_rand_inds(limits, num_injs)
+            inj_inds = []
+            count = 0
+            while count < num_injs:
+                cand_inj = self.get_rand_inds(limits, 1)[0]
+                if inject_loop.check_window(cand_inj):
+                    inj_inds.append(cand_inj)
+                    count += 1
         else:
             self.log("Using given inj_inds for layer " + str(layer_ind))
             # check that the injection indices passed in by the user are valid

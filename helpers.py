@@ -97,7 +97,8 @@ def pickle_object(obj, filename: str):
         
 def get_pickle(filename:str):
     with open(filename, 'rb') as f:
-        pickle.load(f)
+        data = pickle.load(f)
+    return data
 
 def open_path(path):
     p = Path(path)

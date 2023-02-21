@@ -341,17 +341,11 @@ class Loop():
             if ind <= self.taken_inds[i]:
                 return i
         return len(self.taken_inds)
-    
-    # index is the index of the injection location
-    # GET THE WINDOW AT THE OUTPUT OF THE 'd_type' MEMORY AT 'index'
-    def set_window(self, index):
+
+    def check_window(self, index):
         # if weight
         if self.d_type == 'w':
-            # return ranges
-            # for m it's just that single m
-            # for s and r it's just the size of the output (so basically an entire output channel)
-            self.window = (range(index[0], index[0]+1), range(self.out_size[1]), range(self.out_size[2]))
-            return
+            return True
         # if input
         elif self.d_type == 'i':
             # for a chosen dimension (H or W):
@@ -392,7 +386,93 @@ class Loop():
                     o += 1
                     i += S
 
-                    assert(i < 1000)
+                    if i >= 1000:
+                        return None, None
+
+                if len(ranges) == 1:
+                    ranges.append(o)
+                    
+                out_range = 0
+                try:
+                    out_range = range(ranges[0], ranges[1])
+                except:
+                    # print(ranges)
+                    # print("W: " + str(W) + ", S: " + str(S) + ", I: " + str(I) + ", L: " + str(L) + ", off: " + str(offset))
+                    # assert(False)
+                    return None, None
+                return out_range, out_off
+            
+            y_off = x_off = 0
+            s_sp = False
+            r_sp = False
+
+            if not self.WITH_SPATIAL and not self.SERIAL:
+                if self.has_spatial['s']:
+                    s_sp = True
+                if self.has_spatial['r']:
+                    r_sp = True
+            
+            y_range, y_off = get_input_window(self.og_sizes['s'], self.strides[0], index[1], self.input_size[1], offset=y_off)
+            x_range, x_off = get_input_window(self.og_sizes['r'], self.strides[1], index[2], self.input_size[2], offset=x_off)
+            if y_range is None or x_range is None:
+                return False
+            return True
+        elif self.d_type == 'o':
+            return True
+        else:
+            assert(False and "not supported window type")
+    
+    # index is the index of the injection location
+    # GET THE WINDOW AT THE OUTPUT OF THE 'd_type' MEMORY AT 'index'
+    def set_window(self, index):
+        # if weight
+        if self.d_type == 'w':
+            # return ranges
+            # for m it's just that single m
+            # for s and r it's just the size of the output (so basically an entire output channel)
+            self.window = (range(index[0], index[0]+1), range(self.out_size[1]), range(self.out_size[2]))
+        # if input
+        elif self.d_type == 'i':
+            # for a chosen dimension (H or W):
+            # W = weight kernel size
+            # S = stride
+            # I = target index value
+            # L = input size
+            # returns 
+            def get_input_window(W, S, I, L, offset=0):
+                # i is the beginning of the input window
+                # so [i, i+W) gives the current window
+                i = offset
+                # current output index being calculated
+                o = 0
+                # 
+                out_off = 0
+                # range of output indices that use the given target index
+                ranges = []
+                # whether window is covering the target index
+                in_range = False
+                while True:
+                    if i + W > L and len(ranges) == 2:
+                        ranges.append(o)
+                        break
+                    # loop until you get in range
+                    if I in range(i, i+W):
+                        # if first time in range - append beginning of window
+                        if not in_range:
+                            in_range = True
+                            ranges.append(o)
+                            out_off = I - i
+                    # if out of range
+                    else:
+                        # if you were in range - append end of window
+                        if in_range:
+                            ranges.append(o)
+                            break
+                    o += 1
+                    i += S
+
+                    if i >= 1000:
+                        return None, None
 
                 if len(ranges) == 1:
                     ranges.append(o)
@@ -418,6 +498,8 @@ class Loop():
             
             y_range, y_off = get_input_window(self.og_sizes['s'], self.strides[0], index[1], self.input_size[1], offset=y_off)
             x_range, x_off = get_input_window(self.og_sizes['r'], self.strides[1], index[2], self.input_size[2], offset=x_off)
+            if y_range is None or x_range is None:
+                return False
             
             if s_sp:
                 self.loop_classes['s'].set_init_coord(y_off)
@@ -425,11 +507,12 @@ class Loop():
                 self.loop_classes['r'].set_init_coord(x_off)
             
             self.window = (range(self.out_size[0]), y_range, x_range)
-            return
         elif self.d_type == 'o':
             self.window = (range(index[0], index[0]+1), range(index[1], index[1]+1), range(index[2], index[2]+1))
         else:
             assert(False and "not supported window type")
+
+        return True
     
     # checks if the tile that's been iterated to is in bounds (specified by ranges)
     # must be called after 'inject()' has been called
@@ -865,7 +948,10 @@ class Loop():
             self.inj_ind = inj_ind
 
             # calculate the window to use in the loop
-            self.set_window(inj_ind)
+            check_window = self.set_window(inj_ind)
+            if check_window == False:
+                
+                return False
 
             # set new class variables to hold injection info
             self.inj_level = self.mem_inds[i][1]
