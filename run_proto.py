@@ -651,9 +651,11 @@ if __name__=="__main__":
     #             open_path(dir)
     #             out_rates[0].to_pickle(out_file)
 
-    # layer_7_inj_inds = [[(9, 42, 40), (47, 14, 42), (13, 2, 44), (12, 18, 12), (2, 4, 16), (22, 16, 30), (48, 42, 30), (0, 18, 12)]] #(5, 32, 42)
-    # layer_12_inj_inds = [[(103, 16, 2), (40, 6, 20), (51, 4, 4), (36, 6, 0), (72, 4, 4), (43, 0, 14), (66, 20, 14), (65, 0, 14)]] # (28, 0, 20)
-    # layer_17_inj_inds = [[(203, 2, 0), (181, 4, 4), (83, 0, 2), (84, 0, 8), (126, 0, 8), (150, 0, 10), (187, 0, 10), (96, 2, 6)]]
+    layer_7_inj_inds = [[(9, 42, 40), (47, 14, 42), (13, 2, 44), (12, 18, 12), (2, 4, 16), (22, 16, 30), (48, 42, 30), (0, 18, 12)]] #(5, 32, 42)
+    layer_12_inj_inds = [[(103, 16, 2), (40, 6, 20), (51, 4, 4), (36, 6, 0), (72, 4, 4), (43, 0, 14), (66, 20, 14), (65, 0, 14)]] # (28, 0, 20)
+    layer_17_inj_inds = [[(203, 2, 0), (181, 4, 4), (83, 0, 2), (84, 0, 8), (126, 0, 8), (150, 0, 10), (187, 0, 10), (96, 2, 6)]]
+    resnet_special_layers = [7, 12, 17]
+    resnet_special_inds = [layer_7_inj_inds, layer_12_inj_inds, layer_17_inj_inds]
 
     if arg == 0:
         print("first")
@@ -698,7 +700,9 @@ if __name__=="__main__":
         get_net = get_resnet18
         net_name = "resnet18"
         layers = []
-        layers = [i for i in range(7, 21)]
+        for i in range(7, 21):
+            if i not in resnet_special_layers:
+                layers.append(i)
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
@@ -715,6 +719,13 @@ if __name__=="__main__":
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers)
+
+        get_net = get_resnet18
+        net_name = "resnet18"
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                      overwrite=False, append=True, layers=resnet_special_layers, inj_inds=resnet_special_inds)
 
         arch_name = "nvdla"
         get_net = get_resnet18
