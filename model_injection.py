@@ -550,6 +550,9 @@ class ModelInjection():
         for i in layers:
             # make sure given layers is valid
             assert(i >= 0 and i < self.num_layers)
+            if self.loops[i] is None:
+                print("Layer " + str(i) + " has no loop, skipping...")
+                continue
             print("Performing injection into Layer " + str(i) + "...")
             # for each layer need to:
             # 1) get an InjectModel object for the layer and model
