@@ -690,7 +690,7 @@ if __name__=="__main__":
         get_net = get_resnet18
         net_name = "resnet18"
         layers = []
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_resnet18_loops("w"))
@@ -702,7 +702,7 @@ if __name__=="__main__":
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("w"))
@@ -714,7 +714,7 @@ if __name__=="__main__":
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("w"))
@@ -745,7 +745,7 @@ if __name__=="__main__":
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_efficientnet_b0_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers, loops=get_nvdla_efficientnet_b0_loops("w"))
@@ -762,7 +762,19 @@ if __name__=="__main__":
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers)
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                      overwrite=False, append=True, layers=layers)
+
+        get_net = get_resnet18
+        net_name = "resnet18"
+        layers = []
         run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                      overwrite=False, append=True, layers=layers)
+        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
                       img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
                       batch_size=40, use_cpu=use_cpu, add_on=add_on,
                       overwrite=False, append=True, layers=layers)
