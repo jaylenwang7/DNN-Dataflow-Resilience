@@ -112,8 +112,9 @@ def get_loops(vars, mem_dividers, d_type, sizes, paddings, strides, num_layers, 
     # vars is a dict - key is layer number, value is the loop ordering
     loops = []
     for i in range(num_layers):
-        not_in_layers = layers != [] and i not in layers and i in vars
-        if not_in_layers:
+        not_in_layers = layers != [] and i not in layers
+        not_in_vars = i not in vars
+        if not_in_layers or not_in_vars:
             loops.append(None)
         else:
             assert(i in vars)
