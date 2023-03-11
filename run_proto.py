@@ -108,10 +108,11 @@ deit_tiny_sample_layers = vit_224_sample_layers
 BELOW ARE HAND-MAPPED DATAFLOW LOOP NESTS FOR NVDLA ON VARIOUS NETWORKS (as opposed to those done by Timeloop)
 '''
 
-def get_loops(vars, mem_dividers, d_type, sizes, paddings, strides, layers=[]):
+def get_loops(vars, mem_dividers, d_type, sizes, paddings, strides, num_layers, layers=[]):
+    # vars is a dict - key is layer number, value is the loop ordering
     loops = []
-    for i in range(len(vars)):
-        not_in_layers = layers != [] and i not in layers
+    for i in range(num_layers):
+        not_in_layers = layers != [] and i not in layers and i in vars
         if not_in_layers:
             loops.append(None)
         else:
@@ -141,7 +142,7 @@ def get_nvdla_alexnet_loops(d_type:str, layers=[]):
                   [('m', 256), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)],
                   [('m', 64), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)]]
     
-    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, num_layers, layers)
    
 def get_nvdla_resnet18_loops(d_type:str, layers=[]):
     # get the dataset and network
@@ -178,7 +179,7 @@ def get_nvdla_resnet18_loops(d_type:str, layers=[]):
                   [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)], 
                   [('m', 64), ('m', 16, True), ('c', 512), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]]
     
-    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, num_layers, layers)
 
 
 def get_nvdla_efficientnet_b0_loops(d_type:str, layers=[]):
@@ -261,7 +262,7 @@ def get_nvdla_efficientnet_b0_loops(d_type:str, layers=[]):
                   80: [('m', 80), ('m', 16, True), ('c', 320), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
                   81: [('m', 64), ('m', 16, True), ('c', 1280), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]}
     
-    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, num_layers, layers)
 
 
 def get_nvdla_deit_tiny_loops(d_type:str, layers=[]):
@@ -288,7 +289,7 @@ def get_nvdla_deit_tiny_loops(d_type:str, layers=[]):
         nvdla_vars.append([('m', 12), ('m', 16, True), ('c', 48), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
     nvdla_vars.append([('m', 64), ('m', 16, True), ('c', 16), ('q', 1), ('p', 1), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
     
-    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, num_layers, layers)
     
 
 '''
