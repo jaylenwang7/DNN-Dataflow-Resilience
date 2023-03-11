@@ -108,6 +108,18 @@ deit_tiny_sample_layers = vit_224_sample_layers
 BELOW ARE HAND-MAPPED DATAFLOW LOOP NESTS FOR NVDLA ON VARIOUS NETWORKS (as opposed to those done by Timeloop)
 '''
 
+def get_loops(vars, mem_dividers, d_type, sizes, paddings, strides, layers=[]):
+    loops = []
+    for i in range(len(vars)):
+        not_in_layers = layers != [] and i not in layers
+        if not_in_layers:
+            loops.append(None)
+        else:
+            assert(i in vars)
+            nvdla_injection = Loop(vars[i], mem_dividers, d_type=d_type, sizes=sizes[i], paddings=paddings[i], input_strides=strides[i])
+            loops.append(nvdla_injection)
+    return loops
+
 def get_nvdla_alexnet_loops(d_type:str, layers=[]):
     # get the dataset and network
     dataset = get_dataset(IMAGENET_LABELS_PATH, IMAGENET_IMGS_PATH)
@@ -129,16 +141,7 @@ def get_nvdla_alexnet_loops(d_type:str, layers=[]):
                   [('m', 256), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)],
                   [('m', 64), ('m', 16, True), ('c', 256), ('q', 1), ('c', 16), ('s', 1), ('r', 1)]]
     
-    for i in range(num_layers):
-        if not layers or i not in layers:
-            loops.append(None)
-        else:
-            assert(i in nvdla_vars)
-            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
-            loops.append(nvdla_injection)
-
-    return loops
-   
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
    
 def get_nvdla_resnet18_loops(d_type:str, layers=[]):
     # get the dataset and network
@@ -175,15 +178,7 @@ def get_nvdla_resnet18_loops(d_type:str, layers=[]):
                   [('m', 32), ('m', 16, True), ('c', 512), ('q', 1), ('p', 1), ('c', 1), ('s', 3), ('r', 3), ('q', 7), ('p', 7), ('r', 1), ('s', 1)], 
                   [('m', 64), ('m', 16, True), ('c', 512), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]]
     
-    for i in range(num_layers):
-        if not layers or i not in layers:
-            loops.append(None)
-        else:
-            assert(i in nvdla_vars)
-            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
-            loops.append(nvdla_injection)
-    
-    return loops
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
 
 
 def get_nvdla_efficientnet_b0_loops(d_type:str, layers=[]):
@@ -266,15 +261,7 @@ def get_nvdla_efficientnet_b0_loops(d_type:str, layers=[]):
                   80: [('m', 80), ('m', 16, True), ('c', 320), ('q', 1), ('p', 1), ('c', 1), ('s', 1), ('r', 1), ('q', 7), ('p', 7), ('r', 1), ('s', 1)],
                   81: [('m', 64), ('m', 16, True), ('c', 1280), ('q', 1), ('c', 1), ('s', 1), ('r', 1)]}
     
-    for i in range(num_layers):
-        if not layers or i not in layers:
-            loops.append(None)
-        else:
-            assert(i in nvdla_vars)
-            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
-            loops.append(nvdla_injection)
-    
-    return loops
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
 
 
 def get_nvdla_deit_tiny_loops(d_type:str, layers=[]):
@@ -301,15 +288,7 @@ def get_nvdla_deit_tiny_loops(d_type:str, layers=[]):
         nvdla_vars.append([('m', 12), ('m', 16, True), ('c', 48), ('q', 1), ('p', 197), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
     nvdla_vars.append([('m', 64), ('m', 16, True), ('c', 16), ('q', 1), ('p', 1), ('c', 12), ('s', 1), ('r', 1), ('q', 1), ('p', 1), ('r', 1), ('s', 1)])
     
-    for i in range(num_layers):
-        if not layers or i not in layers:
-            loops.append(None)
-        else:
-            assert(i in nvdla_vars)
-            nvdla_injection = Loop(nvdla_vars[i], mem_dividers, d_type=d_type, sizes=var_sizes[i], paddings=paddings[i], input_strides=strides[i])
-            loops.append(nvdla_injection)
-    
-    return loops
+    return get_loops(nvdla_vars, mem_dividers, d_type, var_sizes, paddings, strides, layers)
     
 
 '''
@@ -756,11 +735,11 @@ if __name__=="__main__":
         #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
         #               overwrite=False, append=True, layers=layers)
 
-        arch_name = "simba"
-        get_net = get_efficientnet_b0
-        net_name = "efficientnet_b0"
+        # arch_name = "simba"
+        # get_net = get_efficientnet_b0
+        # net_name = "efficientnet_b0"
         # layers = []
-        efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
+        # efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
         # for i in range(9, 82):
         #     if i not in efficientnet_dw_layers:
         #         layers.append(i)
@@ -768,29 +747,29 @@ if __name__=="__main__":
         #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
         #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
         #               overwrite=False, append=True, layers=layers)
-        layers = []
-        for i in range(0, 9):
-            if i not in efficientnet_dw_layers:
-                layers.append(i)
-        for i in range(34, 82):
-            if i not in efficientnet_dw_layers:
-                layers.append(i)
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers)
+        # layers = []
+        # for i in range(0, 9):
+        #     if i not in efficientnet_dw_layers:
+        #         layers.append(i)
+        # for i in range(34, 82):
+        #     if i not in efficientnet_dw_layers:
+        #         layers.append(i)
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers)
 
-        get_net = get_resnet18
-        net_name = "resnet18"
-        layers = []
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers)
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers)
+        # get_net = get_resnet18
+        # net_name = "resnet18"
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers)
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers)
         
         arch_name = "nvdla"
         get_net = get_efficientnet_b0
