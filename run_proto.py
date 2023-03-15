@@ -638,14 +638,14 @@ if __name__=="__main__":
                                       overwrite=overwrite, skip_extract=True)
                     layers = plotter.layers
                     print(f"Layers: {layers}", flush=True)
-                    for layer in layers:
+                    for i, layer in enumerate(layers):
                         dir = f"loop_results_pickle/{arch_name}/{net_name}/layer_{layer}/"
                         out_file = f"{dir}{d_type_name}_rates.pkl"
                         print("Outputing to: " + out_file, flush=True)
                         if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
                             print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                             continue
-                        data_file = plotter.filenames[layer]
+                        data_file = plotter.filenames[i]
                         # read in the data as a pandas dataframe
                         data_csv = pd.read_csv(data_file)
                         # find the average of 'ClassifiedCorrect' column
