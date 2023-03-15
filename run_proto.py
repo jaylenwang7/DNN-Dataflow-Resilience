@@ -645,7 +645,7 @@ if __name__=="__main__":
                         if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
                             print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                             continue
-                        data_file = f'data_results/{arch_name}/{net_name}/{layer}/data_{d_type_name}s.csv'
+                        data_file = plotter.filenames[layer]
                         # read in the data as a pandas dataframe
                         data_csv = pd.read_csv(data_file)
                         # find the average of 'ClassifiedCorrect' column
