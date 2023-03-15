@@ -638,7 +638,7 @@ if __name__=="__main__":
                     layers = plotter.layers
                     print(f"Layers: {layers}", flush=True)
                     for layer in layers:
-                        dir = f"loop_results_pickle/{net_name}/layer_{layer}/"
+                        dir = f"loop_results_pickle/{arch_name}/{net_name}/layer_{layer}/"
                         out_file = f"{dir}{d_type_name}_rates.pkl"
                         print("Outputing to: " + out_file, flush=True)
                         if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
