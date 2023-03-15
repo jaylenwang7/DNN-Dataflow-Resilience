@@ -25,20 +25,38 @@ def main():
     hw_avgs = {}
     predicted_avgs = {}
     hw_site_counts = {}
-    # loop through each layer directory within data_results/{arch}/{network}
-    for layer in os.listdir(f'data_results/{args.arch}/{args.network}'):
+
+    hw_dir = "loop_results_pickle"
+    # loop through each layer directory within {hw_dir}/{arch}/{network}
+    for layer in os.listdir(f'{hw_dir}/{args.arch}/{args.network}'):
         # if not a dir or doesn't have layer in the name, skip
-        if not os.path.isdir(f'data_results/{args.arch}/{args.network}/{layer}') or 'layer' not in layer:
+        if not os.path.isdir(f'{hw_dir}/{args.arch}/{args.network}/{layer}') or 'layer' not in layer:
             continue
-        layer_num = int(layer.split('layer')[1])
-        data_file = f'data_results/{args.arch}/{args.network}/{layer}/data_{dtype}s.csv'
-        # read in the data as a pandas dataframe
-        data_csv = pd.read_csv(data_file)
-        # find the average of 'ClassifiedCorrect' column
-        avg = data_csv['ClassifiedCorrect'].mean()
+        layer_num = int(layer.split('layer')[1].strip('_'))
+        # ========= For working with data_results =========
+        # data_file = f'{hw_dir}/{args.arch}/{args.network}/{layer}/data_{dtype}s.csv'
+        # # read in the data as a pandas dataframe
+        # data_csv = pd.read_csv(data_file)
+        # # find the average of 'ClassifiedCorrect' column
+        # avg = data_csv['ClassifiedCorrect'].mean()
+        # hw_avgs[layer_num] = avg
+        # # groupby 'NumSites' and then only use the count of each group
+        # site_counts = data_csv['NumSites'].value_counts()
+        # hw_site_counts[layer_num] = site_counts
+        # =================================================
+
+        loop_pickle_file = f'{hw_dir}/{args.arch}/{args.network}/{layer}/{dtype}_rates.pkl'
+        if not os.path.exists(loop_pickle_file):
+            continue
+        with open(loop_pickle_file, 'rb') as f:
+            data = pickle.load(f)
+        avg = data['avg']
+        site_counts = data['site_counts']
+        # sum up the total number of sites
+        total_sites = 0
+        for site_count in site_counts.index:
+            total_sites += site_counts[site_count]
         hw_avgs[layer_num] = avg
-        # groupby 'NumSites' and then only use the count of each group
-        site_counts = data_csv['NumSites'].value_counts()
         hw_site_counts[layer_num] = site_counts
 
         # load the pickle file
@@ -60,7 +78,7 @@ def main():
         for site_count in site_counts.index:
             # find the predicted value for the value of site count
             # weight by the fraction of the data that has that value of site count
-            predicted_avg += interp(site_count) * (site_counts[site_count] / len(data_csv))
+            predicted_avg += interp(site_count) * (site_counts[site_count] / total_sites)
         predicted_avgs[layer_num] = predicted_avg
     
     # get correlation between the hw_avgs and predicted_avgs

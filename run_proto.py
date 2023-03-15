@@ -8,6 +8,7 @@ from timeloop_parser import get_loops, move_maps
 from max_model import get_range
 from typing import Callable, List
 import sys
+import pandas as pd
 
 IMAGENET_IMGS_PATH = "/datasets/shared/imagenet/ILSVRC2015/Data/CLS-LOC/val/"
 IMAGENET_LABELS_PATH = "./ImageNet/validation_labels.csv"
@@ -644,9 +645,17 @@ if __name__=="__main__":
                         if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
                             print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
                             continue
+                        data_file = f'data_results/{arch_name}/{net_name}/{layer}/data_{d_type_name}s.csv'
+                        # read in the data as a pandas dataframe
+                        data_csv = pd.read_csv(data_file)
+                        # find the average of 'ClassifiedCorrect' column
+                        avg = data_csv['ClassifiedCorrect'].mean()
+                        # groupby 'NumSites' and then only use the count of each group
+                        site_counts = data_csv['NumSites'].value_counts()
                         out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
                         open_path(dir)
-                        out_rates[0].to_pickle(out_file)
+                        data_dict = {"out_rates": out_rates, "nsamples": nsamples, "avg": avg, "site_counts": site_counts}
+                        pickle_object(data_dict, out_file)
 
         # get_net = get_efficientnet_b0
         # net_name = "efficientnet_b0"
