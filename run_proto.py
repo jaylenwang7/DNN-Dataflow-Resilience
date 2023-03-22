@@ -636,8 +636,6 @@ if __name__=="__main__":
         d_types = ["i", "w"]
         print("starting...", flush=True)
 
-        # data_dir = "loop_results_pickle"
-        data_dir = "data_results_pickle"
         for arch_name in arch_names:
             for net_name in net_names:
                 maxmin = pick_maxmin(net_name)
