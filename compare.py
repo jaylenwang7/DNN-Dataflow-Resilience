@@ -68,6 +68,7 @@ def main():
         with open(pickle_file, 'rb') as f:
             # the data is a pandas series
             data = pickle.load(f)
+            data = data["out_rates"][0]
 
         # interpolate the data as a function of the number of sites using a cubic spline
         if len(data) >= 4:
@@ -93,12 +94,16 @@ def main():
 
     # concatenate the hw_avg and predicted_avg series
     all_avgs = pd.concat([hw_avgs, predicted_avgs], axis=1)
+    # add a column for the difference between the two
+    all_avgs['diff'] = all_avgs[0] - all_avgs[1]
     print(all_avgs)
+    # print average of absolute difference
+    print(f'Average absolute difference: {all_avgs["diff"].abs().mean()}')
 
     print(f'Correlation between HW and predicted: {hw_avgs.corr(predicted_avgs)}')
 
     # plot as bar chart
-    all_avgs.plot.bar()
+    all_avgs['diff'].plot.bar()
     plt.show()
 
 if __name__ == '__main__':

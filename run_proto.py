@@ -622,7 +622,7 @@ if __name__=="__main__":
 
     if arg == 0:
         print("first")
-        loop = False
+        loop = True
         if loop:
             net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
             arch_names = ["eyeriss", "simba", "nvdla"]
