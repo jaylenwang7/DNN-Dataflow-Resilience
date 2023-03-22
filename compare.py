@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import pickle
 import scipy
+import matplotlib.pyplot as plt
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Compare hardware way and naive way')
@@ -80,13 +81,25 @@ def main():
             # weight by the fraction of the data that has that value of site count
             predicted_avg += interp(site_count) * (site_counts[site_count] / total_sites)
         predicted_avgs[layer_num] = predicted_avg
+
+    def order_dict(d):
+        return {k: d[k] for k in sorted(d.keys())}
+    hw_avgs = order_dict(hw_avgs)
+    predicted_avgs = order_dict(predicted_avgs)
     
     # get correlation between the hw_avgs and predicted_avgs
     hw_avgs = pd.Series(hw_avgs)
     predicted_avgs = pd.Series(predicted_avgs)
-    print(hw_avgs)
+
+    # concatenate the hw_avg and predicted_avg series
+    all_avgs = pd.concat([hw_avgs, predicted_avgs], axis=1)
+    print(all_avgs)
+
     print(f'Correlation between HW and predicted: {hw_avgs.corr(predicted_avgs)}')
-            
+
+    # plot as bar chart
+    all_avgs.plot.bar()
+    plt.show()
 
 if __name__ == '__main__':
     main()

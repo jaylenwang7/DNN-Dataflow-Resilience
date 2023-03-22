@@ -607,11 +607,10 @@ if __name__=="__main__":
     Plots the data collected in a grid form
     '''
     # plot_all(d_type='i')
-    
-    arch_name = "eyeriss"
-    add_on = "loop_sites"
+
     use_cpu = False
     layers = []
+    add_on = "loop_sites"
     # per_sample = 10
     num_imgs = 1000
 
@@ -623,10 +622,22 @@ if __name__=="__main__":
 
     if arg == 0:
         print("first")
-        net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
+        loop = False
+        if loop:
+            net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
+            arch_names = ["eyeriss", "simba", "nvdla"]
+            add_on = "loop_sites"
+            data_dir = "loop_results_pickle"
+        else:
+            net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
+            arch_names = ["eyeriss"]
+            add_on = "random_sites_again"
+            data_dir = "data_results_pickle"
         d_types = ["i", "w"]
         print("starting...", flush=True)
-        arch_names = ["eyeriss", "simba"]
+
+        # data_dir = "loop_results_pickle"
+        data_dir = "data_results_pickle"
         for arch_name in arch_names:
             for net_name in net_names:
                 maxmin = pick_maxmin(net_name)
@@ -639,7 +650,10 @@ if __name__=="__main__":
                     layers = plotter.layers
                     print(f"Layers: {layers}", flush=True)
                     for i, layer in enumerate(layers):
-                        dir = f"loop_results_pickle/{arch_name}/{net_name}/layer_{layer}/"
+                        if loop:
+                            dir = f"{data_dir}/{arch_name}/{net_name}/layer_{layer}/"
+                        else:
+                            dir = f"{data_dir}/{net_name}/layer_{layer}/"
                         out_file = f"{dir}{d_type_name}_rates.pkl"
                         print("Outputing to: " + out_file, flush=True)
                         if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
@@ -768,42 +782,42 @@ if __name__=="__main__":
         #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
         #               overwrite=False, append=True, layers=layers, loops=get_nvdla_efficientnet_b0_loops("w"))
         
-        arch_name = "nvdla"
-        get_net = get_resnet18
-        net_name = "resnet18"
-        layers = []
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_resnet18_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_resnet18_loops("w"))
+        # arch_name = "nvdla"
+        # get_net = get_resnet18
+        # net_name = "resnet18"
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_resnet18_loops("i"))
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_resnet18_loops("w"))
         
-        get_net = get_alexnet
-        net_name = "alexnet"
-        layers = []
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("w"))
+        # get_net = get_alexnet
+        # net_name = "alexnet"
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("i"))
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_alexnet_loops("w"))
         
-        get_net = get_deit_tiny
-        net_name = "deit_tiny"
-        layers = []
-        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("i"))
-        run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
-                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
-                      overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("w"))
+        # get_net = get_deit_tiny
+        # net_name = "deit_tiny"
+        # layers = []
+        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("i"))
+        # run_injection(get_net, net_name, arch_name, d_type="w", num_imgs=num_imgs,
+        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
+        #               overwrite=False, append=True, layers=layers, loops=get_nvdla_deit_tiny_loops("w"))
 
     
     pass

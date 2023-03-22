@@ -162,3 +162,4 @@ profile.json
 networks/
 
 data_results_pickle/
+loop_results_pickle/
