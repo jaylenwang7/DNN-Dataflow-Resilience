@@ -610,7 +610,7 @@ if __name__=="__main__":
 
     use_cpu = False
     layers = []
-    add_on = "loop_sites"
+    add_on = "loop_sites_redo"
     # per_sample = 10
     num_imgs = 1000
 
@@ -623,63 +623,68 @@ if __name__=="__main__":
     if arg == 0:
         print("first")
         loop = True
-        if loop:
-            net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
-            arch_names = ["eyeriss", "simba", "nvdla"]
-            add_on = "loop_sites"
-            data_dir = "loop_results_pickle"
-        else:
-            net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
-            arch_names = ["eyeriss"]
-            add_on = "random_sites_again"
-            data_dir = "data_results_pickle"
-        d_types = ["i", "w"]
-        print("starting...", flush=True)
+        # if loop:
+        #     net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
+        #     arch_names = ["eyeriss", "simba", "nvdla"]
+        #     add_on = "loop_sites"
+        #     data_dir = "loop_results_pickle"
+        # else:
+        #     net_names = ["deit_tiny", "efficientnet_b0", "resnet18", "alexnet"]
+        #     arch_names = ["eyeriss"]
+        #     add_on = "random_sites_again"
+        #     data_dir = "data_results_pickle"
+        # d_types = ["i", "w"]
+        # print("starting...", flush=True)
 
-        for arch_name in arch_names:
-            for net_name in net_names:
-                maxmin = pick_maxmin(net_name)
-                for d_type in d_types:
-                    d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
-                    print(f"Getting data for {net_name} for {d_type} data", flush=True)
-                    overwrite = False
-                    plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=f"_{add_on}", layers=[], 
-                                      overwrite=overwrite, skip_extract=True)
-                    layers = plotter.layers
-                    print(f"Layers: {layers}", flush=True)
-                    for i, layer in enumerate(layers):
-                        if loop:
-                            dir = f"{data_dir}/{arch_name}/{net_name}/layer_{layer}/"
-                        else:
-                            dir = f"{data_dir}/{net_name}/layer_{layer}/"
-                        out_file = f"{dir}{d_type_name}_rates.pkl"
-                        print("Outputing to: " + out_file, flush=True)
-                        if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
-                            print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
-                            continue
-                        data_file = plotter.filenames[i]
-                        # read in the data as a pandas dataframe
-                        data_csv = pd.read_csv(data_file)
-                        # find the average of 'ClassifiedCorrect' column
-                        avg = data_csv['ClassifiedCorrect'].mean()
-                        # groupby 'NumSites' and then only use the count of each group
-                        site_counts = data_csv['NumSites'].value_counts()
-                        out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
-                        open_path(dir)
-                        data_dict = {"out_rates": out_rates, "nsamples": nsamples, "avg": avg, "site_counts": site_counts}
-                        pickle_object(data_dict, out_file)
+        # for arch_name in arch_names:
+        #     for net_name in net_names:
+        #         maxmin = pick_maxmin(net_name)
+        #         for d_type in d_types:
+        #             d_type_name = "input" if d_type == "i" else "weight" if d_type == "w" else "output"
+        #             print(f"Getting data for {net_name} for {d_type} data", flush=True)
+        #             overwrite = False
+        #             if add_on:
+        #                 to_add = f"_{add_on}"
+        #             else:
+        #                 to_add = ""
+        #             plotter = Plotter(arch_name, net_name, maxmin, d_type=d_type, add_on=to_add, layers=[], 
+        #                               overwrite=overwrite, skip_extract=True)
+        #             layers = plotter.layers
+        #             print(f"Layers: {layers}", flush=True)
+        #             for i, layer in enumerate(layers):
+        #                 if loop:
+        #                     dir = f"{data_dir}/{arch_name}/{net_name}/layer_{layer}/"
+        #                 else:
+        #                     dir = f"{data_dir}/{net_name}/layer_{layer}/"
+        #                 out_file = f"{dir}{d_type_name}_rates.pkl"
+        #                 print("Outputing to: " + out_file, flush=True)
+        #                 if os.path.exists(f"{dir}{d_type_name}_rates.pkl"):
+        #                     print(f"Skipping layer {layer} for {net_name} for {d_type} data", flush=True)
+        #                     continue
+        #                 data_file = plotter.filenames[i]
+        #                 # read in the data as a pandas dataframe
+        #                 data_csv = pd.read_csv(data_file)
+        #                 # find the average of 'ClassifiedCorrect' column
+        #                 avg = data_csv['ClassifiedCorrect'].mean()
+        #                 # groupby 'NumSites' and then only use the count of each group
+        #                 site_counts = data_csv['NumSites'].value_counts()
+        #                 out_rates, nsamples = plotter.get_groupby("NumSites", to_list=False, layer=layer)
+        #                 open_path(dir)
+        #                 data_dict = {"out_rates": out_rates, "nsamples": nsamples, "avg": avg, "site_counts": site_counts}
+        #                 pickle_object(data_dict, out_file)
 
-        # get_net = get_efficientnet_b0
-        # net_name = "efficientnet_b0"
-        # layers = []
-        # efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
-        # for i in range(0, 20):
-        #     if i not in efficientnet_dw_layers:
-        #         layers.append(i)
-        # run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
-        #               img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
-        #               batch_size=40, use_cpu=use_cpu, add_on=add_on,
-        #               overwrite=False, append=True, layers=layers)
+        arch_name = "eyeriss"
+        get_net = get_efficientnet_b0
+        net_name = "efficientnet_b0"
+        layers = []
+        efficientnet_dw_layers = [1, 6, 11, 16, 21, 26, 31, 36, 41, 46, 51, 56, 61, 66, 71, 76]
+        for i in range(0, 82):
+            if i not in efficientnet_dw_layers:
+                layers.append(i)
+        run_injection(get_net, net_name, arch_name, d_type="i", num_imgs=num_imgs,
+                      img_path=IMAGENET_IMGS_PATH, label_path=IMAGENET_LABELS_PATH,
+                      batch_size=40, use_cpu=use_cpu, add_on=add_on,
+                      overwrite=False, append=True, layers=layers)
 
         # get_net = get_resnet18
         # net_name = "resnet18"
