@@ -188,7 +188,7 @@ def move_maps(arch_name: str, model_name: str, map_dir: str):
             print("Writing to: " + str(newfile))
             shutil.copy(f, newfile)
             
-def get_loops(get_net, dir, sizes, paddings, strides, get_data, to_parse='**/*.map.txt', d_type='i', print_out=False, layers=[], ids_to_skip=[]):
+def get_timeloops(get_net, dir, sizes, paddings, strides, get_data, to_parse='**/*.map.txt', d_type='i', print_out=False, layers=[], ids_to_skip=[]):
     net = get_net()
     # parse the files in the given dir and get info
     loops, divs, names = parse_files(dir, to_parse)
