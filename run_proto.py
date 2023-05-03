@@ -4,7 +4,7 @@ from info_model import get_layer_info, print_layer_sizes
 from loop import Loop
 from model_injection import ModelInjection
 from plotter import Plotter, combine_plots
-from timeloop_parser import get_loops, move_maps
+from timeloop_parser import get_timeloops, move_maps
 from max_model import get_range
 from typing import Callable, List
 import sys
@@ -395,7 +395,7 @@ def run_injection(get_net: Callable, model_name: str, arch_name: str, d_type: st
         timeloop_map_dir += '/' + arch_name + '/' + model_name + '/'
         def get_data():
             return get_dataset(label_path, img_path)
-        loops, names = get_loops(get_net, timeloop_map_dir, var_sizes, paddings, strides, get_data, d_type=d_type, layers=layers)
+        loops, names = get_timeloops(get_net, timeloop_map_dir, var_sizes, paddings, strides, get_data, d_type=d_type, layers=layers)
         if print_loops:
             for loop in loops:
                 print(loop)
